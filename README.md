@@ -3,8 +3,13 @@
 [![Tech Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20React%20%7C%20Expo%20%7C%20Express%20%7C%20Prisma-blue)](https://github.com/ronipaul2021/truetestlabs)
 [![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
 [![Database: SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey.svg)](https://sqlite.org)
+[![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active%20Development-orange)](https://github.com/ronipaul2021/truetestlabs)
+
+> [!NOTE]
+> **Project Status:** Under active development (Timeline: 1/5/2026 to Present). This project is work-in-progress and is not yet complete.
 
 TrueTestLabs is a comprehensive clinical diagnostic and operations management platform. Built as a monorepo, it seamlessly integrates administrative control, clinical portals, client ordering systems, and mobile companion applications to manage laboratory operations.
+
 
 ---
 
