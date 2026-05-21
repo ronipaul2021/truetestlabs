@@ -1,0 +1,73 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Prescription {
+  id          Int      @id @default(autoincrement())
+  patientName String
+  patientPhone String
+  imageUrl    String
+  latitude    Float
+  longitude   Float
+  status      String   @default("pending") // pending, accepted, collecting, processing, completed
+  centerId    Int?     // Assigned center
+  center      DiagnosticCenter? @relation(fields: [centerId], references: [id])
+  age          Int?
+  gender       String?
+  paymentStatus String   @default("pending") // pending, paid, partial
+  totalAmount  Float     @default(0)
+  selectedServices Service[]
+  reportUrl   String?  // Digital report path
+  createdAt   DateTime @default(now())
+}
+
+model DiagnosticCenter {
+  id          Int       @id @default(autoincrement())
+  generatedId String    @unique // TTL-XXXX
+  name        String
+  ownerName   String    @default("")
+  email       String    @default("")
+  password    String
+  latitude    Float
+  longitude   Float
+  phoneNumber String
+  address     String    @default("")
+  googleMapUrl String   @default("")
+  
+  // Compliance Info
+  isoNumber    String?
+  nablNumber   String?
+  gstNumber    String?
+  tradeLicense String?
+  
+  // Document Paths
+  isoCertificate String?
+  nablCertificate String?
+  
+  providesEmergency Boolean @default(false)
+  
+  isVerified  Boolean   @default(false)
+  services    Service[]
+  prescriptions Prescription[]
+}
+
+model Service {
+  id        Int              @id @default(autoincrement())
+  name      String           // e.g. USG, X-Ray
+  price     Float            @default(0)
+  centerId  Int
+  center    DiagnosticCenter @relation(fields: [centerId], references: [id])
+  prescriptions Prescription[]
+}

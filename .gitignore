@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+dist/
+build/
+web-build/
+
+# Next.js & Expo build outputs
+.next/
+out/
+.expo/
+*.tsbuildinfo
+next-env.d.ts
+expo-env.d.ts
+
+# Testing
+coverage/
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+
+# Environment variables & secrets
+.env
+.env*
+.env.local
+.env*.local
+*.pem
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Native generated folders
+ios/
+android/
+.kotlin/
+.metro-health-check*
+
+# IDEs & System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+npm-debug.log*
+npm-debug.*
+yarn-debug.log*
+yarn-debug.*
+yarn-error.log*
+.pnpm-debug.log*
+.vercel
