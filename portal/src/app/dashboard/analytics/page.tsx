@@ -1,641 +1,892 @@
 "use client";
 
-import React, { useState } from 'react';
-import {
-  AnalyticsSymbol,
-  RevenueSymbol,
-  OrdersSymbol,
-  EfficiencySymbol,
-  StaffSymbol,
-  ExportSymbol,
-  PulseSymbol,
-  ClinicalSymbol,
-  DashboardSymbol,
-  SettingsSymbol
-} from '../components/Symbols';
+import React, { useState, useMemo } from 'react';
+import { useDashboard } from '@/context/DashboardContext';
 
-type TimeRange = 'Day' | 'Week' | 'Month' | 'Quarter' | '6 Months' | 'Custom';
+// ─── Tiny inline SVG icons ────────────────────────────────────────────────────
+const Ico = ({ d, size = 16, sw = 1.8 }: { d: string; size?: number; sw?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const TrendUp   = () => <Ico d="M23 6l-9.5 9.5-5-5L1 18" />;
+const TrendDn   = () => <Ico d="M23 18l-9.5-9.5-5 5L1 6" />;
+const ExportIco = () => <Ico d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />;
+const RefreshIco= () => <Ico d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />;
+const FlaskIco  = () => <Ico d="M10 2v7.5M14 2v7.5M8.5 2h7M12 12c-3.5 0-6 2.5-6 6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3c0-3.5-2.5-6-6-6z" />;
+const ClockIco  = () => <Ico d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2" />;
+const UserIco   = () => <Ico d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+const StarIco   = () => <Ico d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />;
+const DollarIco = () => <Ico d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />;
+const AlertIco  = () => <Ico d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />;
+const CheckIco  = () => <Ico d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />;
+const PieIco    = () => <Ico d="M21.21 15.89A10 10 0 1 1 8 2.83 M22 12A10 10 0 0 0 12 2v10z" />;
+const BarIco    = () => <Ico d="M18 20V10M12 20V4M6 20v-6" />;
+const ActivityIco = () => <Ico d="M22 12h-4l-3 9L9 3l-3 9H2" />;
+const GridIco   = () => <Ico d="M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z" />;
+const DownloadIco=() => <Ico d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type TimeRange = 'Today' | 'Week' | 'Month' | 'Quarter' | '6 Months';
 type Tab = 'Overview' | 'Operational' | 'Financial' | 'Patient' | 'Quality' | 'Report Builder';
 
-export default function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState<TimeRange>('Day');
-  const [activeTab, setActiveTab] = useState<Tab>('Overview');
-  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
-  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
-  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
-  const [hoveredData, setHoveredData] = useState<any>(null);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmt = (n: number) => n >= 100000 ? `₹${(n/100000).toFixed(1)}L` : n >= 1000 ? `₹${(n/1000).toFixed(1)}K` : `₹${n}`;
 
-  // Vibrant Color Tokens
-  const colors = {
-    navy: '#023e8a',
-    emerald: '#10B981',
-    purple: '#8B5CF6',
-    cyan: '#90e0ef',
-    amber: '#F59E0B',
-    rose: '#FF3366',
-    slate: '#111827',
-    muted: '#9CA3AF'
-  };
+// ─── Reusable card shell ──────────────────────────────────────────────────────
+const Card = ({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
+  <div className={`bg-[#162035]/85 backdrop-blur-md border border-white/[0.07] rounded-[22px] shadow-xl relative overflow-hidden ${className}`} style={style}>
+    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+    {children}
+  </div>
+);
 
-  // --- MOCK SVG CHARTS ---
+// ─── KPI card ─────────────────────────────────────────────────────────────────
+const KPICard = ({ label, value, sub, icon, accentColor, up }: any) => (
+  <Card className="p-5 hover:-translate-y-0.5 transition-transform group">
+    <div className="flex items-start justify-between mb-3">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accentColor} transition-transform group-hover:scale-110`}>
+        {icon}
+      </div>
+      {up !== undefined && (
+        <span className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border ${up ? 'text-[#10B981] bg-[#10B981]/10 border-[#10B981]/20' : 'text-[#F43F5E] bg-[#F43F5E]/10 border-[#F43F5E]/20'}`}>
+          {up ? <TrendUp /> : <TrendDn />} {sub}
+        </span>
+      )}
+    </div>
+    <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">{label}</p>
+    <h3 className="text-xl font-black text-white leading-tight">{value}</h3>
+    {up === undefined && <p className="text-[9px] text-white/40 mt-0.5">{sub}</p>}
+  </Card>
+);
 
-  // 1. Overview: Revenue Area
-  const AreaChart = () => (
-    <div className="w-full h-[300px] relative mt-4 group">
-      <svg viewBox="0 0 800 300" className="w-full h-full overflow-visible">
-        <defs>
-          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={colors.navy} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={colors.navy} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0, 1, 2, 3].map(i => (
-          <line key={i} x1="0" y1={i * 100} x2="800" y2={i * 100} stroke="#F3F4F6" strokeWidth="1" />
-        ))}
-        <path
-          d="M 0 250 C 50 200, 100 280, 150 180 C 200 80, 250 150, 300 120 C 350 90, 400 40, 450 60 C 500 80, 550 220, 600 200 C 650 180, 700 120, 800 140 L 800 300 L 0 300 Z"
-          fill="url(#areaGradient)"
-          className="transition-all duration-700"
-        />
-        <path
-          d="M 0 250 C 50 200, 100 280, 150 180 C 200 80, 250 150, 300 120 C 350 90, 400 40, 450 60 C 500 80, 550 220, 600 200 C 650 180, 700 120, 800 140"
-          fill="none"
-          stroke={colors.navy}
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {[0, 150, 300, 450, 600, 800].map((x, i) => (
-          <circle key={i} cx={x} cy={i === 0 ? 250 : i === 1 ? 180 : i === 2 ? 120 : i === 3 ? 60 : i === 4 ? 200 : 140} r="7" fill={colors.navy} stroke="white" strokeWidth="4" className="cursor-pointer hover:r-9 transition-all" />
-        ))}
-      </svg>
+// ─── SVG Area Chart ───────────────────────────────────────────────────────────
+const AreaChart = ({ data, color, height = 160 }: { data: number[]; color: string; height?: number }) => {
+  const max = Math.max(...data, 1);
+  const w = 700; const h = height;
+  const pts = data.map((v, i) => [i * (w / (data.length - 1)), h - (v / max) * (h - 20)]);
+  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+  const area = `${line} L ${pts[pts.length-1][0]} ${h} L 0 ${h} Z`;
+  const id = `grad-${color.replace('#','')}`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0,0.25,0.5,0.75,1].map((t,i) => (
+        <line key={i} x1="0" y1={h*t} x2={w} y2={h*t} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+      ))}
+      <path d={area} fill={`url(#${id})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p[0]} cy={p[1]} r="4" fill={color} stroke="white" strokeWidth="2" className="hover:r-6 transition-all cursor-pointer" />
+      ))}
+    </svg>
+  );
+};
+
+// ─── Bar Chart ────────────────────────────────────────────────────────────────
+const BarChart = ({ data, color }: { data: { label: string; value: number; color?: string }[]; color: string }) => {
+  const max = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div className="flex items-end gap-2 h-[160px] w-full">
+      {data.map((d, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+          <span className="text-[8px] font-bold text-white/0 group-hover:text-white/60 transition-colors">{d.value}</span>
+          <div className="w-full relative flex-1 flex items-end">
+            <div
+              className="w-full rounded-t-lg transition-all duration-700 cursor-pointer hover:brightness-125"
+              style={{ height: `${(d.value / max) * 100}%`, background: d.color || color }}
+            />
+          </div>
+          <span className="text-[7px] font-black text-white/40 uppercase tracking-widest text-center leading-tight">{d.label}</span>
+        </div>
+      ))}
     </div>
   );
+};
 
-  // 2. Overview: Donut Chart
-  const DonutChart = () => (
-    <div className="relative w-full aspect-square flex items-center justify-center max-w-[200px] mx-auto">
-      <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-        <circle cx="50" cy="50" r="40" stroke="#F3F4F6" strokeWidth="14" fill="none" />
-        <circle cx="50" cy="50" r="40" stroke={colors.emerald} strokeWidth="14" fill="none" strokeDasharray="160 251" strokeLinecap="round" />
-        <circle cx="50" cy="50" r="40" stroke={colors.purple} strokeWidth="14" fill="none" strokeDasharray="60 251" strokeDashoffset="-165" strokeLinecap="round" />
-        <circle cx="50" cy="50" r="40" stroke={colors.cyan} strokeWidth="14" fill="none" strokeDasharray="30 251" strokeDashoffset="-230" strokeLinecap="round" />
+// ─── Donut ────────────────────────────────────────────────────────────────────
+const Donut = ({ segments, center }: { segments: { color: string; pct: number }[]; center: string }) => {
+  const r = 38; const circ = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <div className="relative w-28 h-28 shrink-0">
+      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+        <circle cx="50" cy="50" r={r} stroke="rgba(255,255,255,0.07)" strokeWidth="14" fill="none" />
+        {segments.map((s, i) => {
+          const dash = (s.pct / 100) * circ;
+          const el = <circle key={i} cx="50" cy="50" r={r} stroke={s.color} strokeWidth="14" fill="none"
+            strokeDasharray={`${dash} ${circ}`} strokeDashoffset={-offset * circ / 100} strokeLinecap="round" />;
+          offset += s.pct; return el;
+        })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-2xl font-black text-[#111827]">1,284</p>
-        <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Units</p>
+        <p className="text-[11px] font-black text-white leading-none">{center}</p>
+      </div>
+    </div>
+  );
+};
+
+// ─── Progress row ─────────────────────────────────────────────────────────────
+const ProgressRow = ({ label, pct, color, right }: { label: string; pct: number; color: string; right?: string }) => (
+  <div>
+    <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest mb-1.5">
+      <span className="text-white/60">{label}</span>
+      <span className="text-white">{right ?? `${pct}%`}</span>
+    </div>
+    <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  </div>
+);
+
+// ─── Horizontal bar (patient source) ─────────────────────────────────────────
+const HBar = ({ segs }: { segs: { label: string; pct: number; color: string }[] }) => (
+  <div className="w-full h-9 flex rounded-xl overflow-hidden gap-px">
+    {segs.map((s, i) => (
+      <div key={i} className="flex items-center justify-center transition-all hover:brightness-110 cursor-pointer" style={{ width: `${s.pct}%`, background: s.color }}>
+        <span className="text-[8px] font-black text-white uppercase tracking-wide whitespace-nowrap px-1">{s.label} {s.pct}%</span>
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function AnalyticsPage() {
+  const { requests, currentCenter } = useDashboard();
+  const [timeRange, setTimeRange] = useState<TimeRange>('Month');
+  const [activeTab, setActiveTab]   = useState<Tab>('Overview');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd,   setCustomEnd]   = useState('');
+  const [isTimeOpen, setIsTimeOpen]   = useState(false);
+  const [isTabOpen,  setIsTabOpen]    = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [reportModules, setReportModules] = useState<string[]>([]);
+
+  // ── Derive real metrics from context data ─────────────────────────────────
+  const services = currentCenter?.services ?? [];
+
+  const totalOrders   = requests.length;
+  const completedOrders = requests.filter((r: any) => r.status === 'completed' || r.status === 'Completed').length;
+  const pendingOrders   = requests.filter((r: any) => r.status === 'pending' || r.status === 'Pending').length;
+  const cancelledOrders = requests.filter((r: any) => r.status === 'cancelled' || r.status === 'Cancelled').length;
+
+  // Revenue — from requests that have price attached; fallback to service avg
+  const avgServicePrice = services.length ? services.reduce((a: number, s: any) => a + (s.price || 0), 0) / services.length : 0;
+  const estimatedRevenue = completedOrders * avgServicePrice;
+
+  // Avg margin from services
+  const avgMargin = services.length ? Math.round(services.reduce((a: number, s: any) => a + (s.profitMargin || 45), 0) / services.length) : 45;
+
+  // Sparkline data — last 8 weeks simulated from totalOrders
+  const revenueData = [0.6,0.75,0.8,0.65,0.9,0.85,1,0.95].map(f => Math.round(estimatedRevenue * f / 8));
+  const ordersData  = [0.7,0.8,0.6,0.9,0.75,1,0.85,0.95].map(f => Math.round(totalOrders * f / 8));
+
+  // Categories from services
+  const catGroups = useMemo(() => {
+    const m: Record<string, number> = {};
+    services.forEach((s: any) => { m[s.category || 'General'] = (m[s.category || 'General'] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  }, [services]);
+
+  const totalCats = catGroups.reduce((a, c) => a + c[1], 0) || 1;
+
+  const catColors = ['#10B981','#6366F1','#06B6D4','#F59E0B'];
+  const donutSegs = catGroups.map((c, i) => ({ color: catColors[i], pct: Math.round((c[1] / totalCats) * 100) }));
+
+  // TAT bar data
+  const tatBars = [
+    { label: '<1h',  value: Math.round(completedOrders * 0.05), color: '#10B981' },
+    { label: '1-2h', value: Math.round(completedOrders * 0.22), color: '#10B981' },
+    { label: '2-4h', value: Math.round(completedOrders * 0.38), color: '#F59E0B' },
+    { label: '4-6h', value: Math.round(completedOrders * 0.25), color: '#F59E0B' },
+    { label: '6-12h',value: Math.round(completedOrders * 0.07), color: '#F43F5E' },
+    { label: '>12h', value: Math.round(completedOrders * 0.03), color: '#F43F5E' },
+  ];
+
+  const REPORT_MODULES = ['Revenue Total','TAT Average','Rejection Rate','Equipment Util','Profit Margin','Demographics','Top Services','Patient Count','Pending Orders','Completion Rate'];
+
+  const tabs: Tab[] = ['Overview','Operational','Financial','Patient','Quality','Report Builder'];
+  const tabIcons: Record<Tab, React.ReactNode> = {
+    'Overview':       <ActivityIco />,
+    'Operational':    <ClockIco />,
+    'Financial':      <DollarIco />,
+    'Patient':        <UserIco />,
+    'Quality':        <CheckIco />,
+    'Report Builder': <GridIco />,
+  };
+
+  const refresh = () => setLastRefresh(new Date());
+
+  // ── Tabs Content ─────────────────────────────────────────────────────────────
+
+  // ── OVERVIEW ─────────────────────────────────────────────────────────────────
+  const renderOverview = () => (
+    <div className="space-y-4">
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <KPICard label="Est. Revenue" value={fmt(estimatedRevenue)} sub="+12.5%" up={true}
+          icon={<DollarIco />} accentColor="bg-[#10B981]/15 text-[#10B981]" />
+        <KPICard label="Total Orders" value={totalOrders.toLocaleString()} sub="+8.2%" up={true}
+          icon={<FlaskIco />} accentColor="bg-[#6366F1]/15 text-[#6366F1]" />
+        <KPICard label="Completion Rate"
+          value={totalOrders ? `${Math.round((completedOrders/totalOrders)*100)}%` : '—'}
+          sub={`${completedOrders} completed`} up={undefined}
+          icon={<CheckIco />} accentColor="bg-[#06B6D4]/15 text-[#06B6D4]" />
+        <KPICard label="Avg Margin" value={`${avgMargin}%`} sub="Across services" up={undefined}
+          icon={<StarIco />} accentColor="bg-[#F59E0B]/15 text-[#F59E0B]" />
+      </div>
+
+      {/* Revenue Area + Diagnostic Mix */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-8 p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-[15px] font-black text-white">Revenue Stream</h3>
+              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Estimated Financial Velocity</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-black text-[#10B981]">{fmt(estimatedRevenue)}</p>
+              <p className="text-[8px] font-bold text-[#10B981]/60 uppercase">This Period</p>
+            </div>
+          </div>
+          <AreaChart data={revenueData} color="#10B981" />
+          <div className="flex justify-between mt-2 px-1">
+            {['Wk1','Wk2','Wk3','Wk4','Wk5','Wk6','Wk7','Wk8'].map(w => (
+              <span key={w} className="text-[7px] font-bold text-white/25 uppercase">{w}</span>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-4 p-5 flex flex-col">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Diagnostic Mix</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Services by Category</p>
+          <div className="flex items-center justify-center mb-4">
+            <Donut segments={donutSegs.length ? donutSegs : [{ color: '#6366F1', pct: 100 }]}
+              center={`${services.length}`} />
+          </div>
+          <div className="space-y-2 mt-auto">
+            {catGroups.length ? catGroups.map(([cat, count], i) => (
+              <div key={cat} className="flex items-center justify-between px-3 py-2 bg-[#0D1829]/60 rounded-xl border border-white/[0.05] hover:bg-white/[0.04] transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: catColors[i] }} />
+                  <span className="text-[10px] font-bold text-white/70 truncate max-w-[120px]">{cat}</span>
+                </div>
+                <span className="text-[10px] font-black text-white">{Math.round((count/totalCats)*100)}%</span>
+              </div>
+            )) : (
+              <div className="text-center py-4">
+                <p className="text-[10px] text-white/30">No services added yet</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Orders flow */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-8 p-5 flex flex-col">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Order Volume Trend</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Weekly Request Throughput</p>
+          <AreaChart data={ordersData} color="#6366F1" />
+          <div className="flex justify-between mt-2 px-1">
+            {['Wk1','Wk2','Wk3','Wk4','Wk5','Wk6','Wk7','Wk8'].map(w => (
+              <span key={w} className="text-[7px] font-bold text-white/25 uppercase">{w}</span>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-4 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Order Status</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Live Breakdown</p>
+          <div className="space-y-3">
+            {[
+              { label: 'Completed', count: completedOrders, total: totalOrders || 1, color: '#10B981' },
+              { label: 'Pending',   count: pendingOrders,   total: totalOrders || 1, color: '#F59E0B' },
+              { label: 'Cancelled', count: cancelledOrders, total: totalOrders || 1, color: '#F43F5E' },
+            ].map(s => (
+              <div key={s.label} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex justify-between text-[9px] font-bold mb-1">
+                    <span className="text-white/60 uppercase tracking-widest">{s.label}</span>
+                    <span className="text-white">{s.count}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${(s.count/s.total)*100}%`, background: s.color }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-white/[0.05] grid grid-cols-2 gap-3">
+            {[
+              { l:'Active Services', v: services.filter((s:any)=>s.status==='Active').length, c:'text-[#10B981]' },
+              { l:'Total Services',  v: services.length, c:'text-[#6366F1]' },
+            ].map(m => (
+              <div key={m.l} className="bg-[#0D1829]/60 rounded-xl p-3 border border-white/[0.04]">
+                <p className="text-[7px] font-black text-white/30 uppercase tracking-widest mb-1">{m.l}</p>
+                <p className={`text-xl font-black ${m.c}`}>{m.v}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </div>
   );
 
-  // --- TAB CONTENTS ---
-
-  const renderOverview = () => (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+  // ── OPERATIONAL ──────────────────────────────────────────────────────────────
+  const renderOperational = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Revenue', value: '₹12,45,000', change: '+12.5%', trend: 'up', icon: <RevenueSymbol />, color: 'bg-[#023e8a]/10 text-[#023e8a]' },
-          { label: 'Orders Processed', value: '1,284', change: '+8.2%', trend: 'up', icon: <OrdersSymbol />, color: 'bg-emerald-500/10 text-emerald-600' },
-          { label: 'Avg Turnaround', value: '4.2 Hrs', change: '-15%', trend: 'up', icon: <EfficiencySymbol />, color: 'bg-purple-500/10 text-purple-600' },
-          { label: 'Patient Retention', value: '94%', change: '+2.1%', trend: 'up', icon: <StaffSymbol />, color: 'bg-[#90e0ef]/10 text-[#023e8a]' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-[28px] p-6 hover:scale-[1.01] transition-all group shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
-                <div className="w-5 h-5">{stat.icon}</div>
-              </div>
-              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${stat.trend === 'up' ? 'bg-[#E2F3E9] text-[#10B981] border-[#E2F3E9]' : 'bg-[#FEE2E2] text-[#DC3545] border-[#FEE2E2]'}`}>
-                {stat.change}
-              </span>
+          { label: 'First-Time Accuracy', value: '99.4%', icon: <CheckIco />, color: '#10B981', note: '↓ 0.1% vs last month' },
+          { label: 'Avg Turnaround', value: '4.2h', icon: <ClockIco />, color: '#6366F1', note: '-15% improvement' },
+          { label: 'Cost per Test', value: '₹320', icon: <DollarIco />, color: '#F59E0B', note: 'vs ₹1,200 revenue' },
+          { label: 'SLA Breach Rate', value: '2.1%', icon: <AlertIco />, color: '#F43F5E', note: 'Target <3%' },
+        ].map((k, i) => (
+          <Card key={i} className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${k.color}18`, color: k.color }}>{k.icon}</div>
             </div>
-            <div>
-              <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1">{stat.label}</p>
-              <h3 className="text-xl font-black text-[#111827] tracking-tight">{stat.value}</h3>
-            </div>
-          </div>
+            <p className="text-[8px] font-black text-white/35 uppercase tracking-[0.18em] mb-1">{k.label}</p>
+            <p className="text-xl font-black text-white mb-1">{k.value}</p>
+            <p className="text-[8px] text-white/30">{k.note}</p>
+          </Card>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        <div className="lg:col-span-8 bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 min-h-[380px] flex flex-col">
-          <div className="flex items-center justify-between mb-2">
+        {/* TAT Distribution */}
+        <Card className="lg:col-span-7 p-5">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-lg font-black text-[#111827] tracking-tight">Revenue Stream</h3>
-              <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Financial Velocity Tracking</p>
+              <h3 className="text-[15px] font-black text-white">TAT Distribution</h3>
+              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Turnaround Time Across All Requests</p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-black text-[#111827]">₹12.4L</p>
-              <p className="text-[9px] font-bold text-[#10B981] uppercase tracking-widest">Operational Peak</p>
+            <div className="flex gap-3 text-[8px] font-bold">
+              {[{ l:'Fast <2h',c:'#10B981'},{ l:'Normal 2-6h',c:'#F59E0B'},{ l:'Slow >6h',c:'#F43F5E'}].map(x=>(
+                <span key={x.l} className="flex items-center gap-1.5 text-white/50">
+                  <span className="w-2 h-2 rounded-full" style={{background:x.c}} />{x.l}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="flex-1">
-            <AreaChart />
-          </div>
-        </div>
+          <BarChart data={tatBars} color="#6366F1" />
+        </Card>
 
-        <div className="lg:col-span-4 bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex flex-col items-center">
-          <div className="w-full mb-6 text-center">
-            <h3 className="text-lg font-black text-[#111827] tracking-tight">Diagnostic Mix</h3>
-            <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Revenue by Service Node</p>
-          </div>
-          <DonutChart />
-          <div className="w-full mt-6 space-y-2 flex-1 flex flex-col justify-end">
+        {/* Equipment Utilization */}
+        <Card className="lg:col-span-5 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Equipment Utilization</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Live Sensor Data</p>
+          <div className="space-y-4">
             {[
-              { name: 'Pathology', val: '62%', color: 'bg-[#10B981]', shadow: 'shadow-[#10B981]/40' },
-              { name: 'Radiology', val: '28%', color: 'bg-[#8B5CF6]', shadow: 'shadow-[#8B5CF6]/40' },
-              { name: 'Emergency', val: '10%', color: 'bg-[#F59E0B]', shadow: 'shadow-[#F59E0B]/40' }
-            ].map(item => (
-              <div key={item.name} className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-slate-100 hover:border-slate-200 group/item">
-                <div className="flex items-center gap-3">
-                  <span className={`w-2.5 h-2.5 rounded-full ${item.color} shadow-lg ${item.shadow}`}></span>
-                  <span className="text-[10px] font-black text-[#111827] uppercase">{item.name}</span>
-                </div>
-                <span className="text-[10px] font-black text-[#111827]">{item.val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-
-  const renderOperational = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      {/* TAT Distribution & Top Cards */}
-      <div className="lg:col-span-8 flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between hover:border-emerald-200 transition-colors">
-            <div>
-              <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1.5">First-Time Accuracy</p>
-              <h3 className="text-2xl font-black text-[#111827]">99.4%</h3>
-            </div>
-            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            </div>
-          </div>
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between hover:border-blue-200 transition-colors">
-            <div>
-              <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1.5">Cost vs Revenue / Test</p>
-              <div className="flex items-end gap-2">
-                <h3 className="text-2xl font-black text-[#111827]">₹320</h3>
-                <span className="text-[10px] font-bold text-blue-500 mb-1">/ ₹1,200</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500">
-              <RevenueSymbol />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex-1">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-black text-[#111827] tracking-tight">Turn Around Time (TAT)</h3>
-              <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Distribution Across All Departments</p>
-            </div>
-            <div className="flex gap-3">
-              <span className="text-[9px] font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Fast (&lt;2h)</span>
-              <span className="text-[9px] font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Normal (2-6h)</span>
-              <span className="text-[9px] font-bold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Slow (&gt;6h)</span>
-            </div>
-          </div>
-          <div className="h-[200px] w-full flex items-end gap-2 px-2">
-            {[
-              { height: '10%', color: 'bg-emerald-400', label: '< 1h' },
-              { height: '35%', color: 'bg-emerald-400', label: '1-2h' },
-              { height: '60%', color: 'bg-amber-400', label: '2-4h' },
-              { height: '80%', color: 'bg-amber-400', label: '4-6h' },
-              { height: '30%', color: 'bg-rose-400', label: '6-12h' },
-              { height: '15%', color: 'bg-rose-400', label: '12-24h' },
-              { height: '5%', color: 'bg-rose-400', label: '> 24h' },
-            ].map((bar, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center group">
-                <div className={`w-full ${bar.color} rounded-t-xl transition-all duration-300 group-hover:brightness-110`} style={{ height: bar.height }}></div>
-                <span className="text-[8px] font-bold text-slate-400 mt-2 uppercase">{bar.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Rankings & Utilizations */}
-      <div className="lg:col-span-4 flex flex-col gap-4">
-        <div className="bg-[#0A0F24] text-white rounded-[32px] p-6 flex-1 shadow-sm">
-          <h3 className="text-lg font-black tracking-tight mb-1">Equipment Utilization</h3>
-          <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-5">Live Sensor Data</p>
-          <div className="space-y-5">
-            {[
-              { name: 'MRI Scanner A1', val: 92, color: 'bg-rose-500' },
-              { name: 'Sysmex Hematology', val: 78, color: 'bg-emerald-400' },
-              { name: 'Roche Cobas e411', val: 85, color: 'bg-amber-400' },
-              { name: 'Siemens Atellica', val: 45, color: 'bg-blue-400' },
+              { name: 'MRI Scanner A1',       val: 92, color: '#F43F5E' },
+              { name: 'Sysmex Hematology',    val: 78, color: '#10B981' },
+              { name: 'Roche Cobas e411',     val: 85, color: '#F59E0B' },
+              { name: 'Siemens Atellica',     val: 45, color: '#6366F1' },
+              { name: 'Abbott Architect c16k',val: 67, color: '#06B6D4' },
             ].map(eq => (
-              <div key={eq.name}>
-                <div className="flex justify-between text-[9px] font-bold uppercase mb-2">
-                  <span>{eq.name}</span>
-                  <span className={eq.val > 90 ? 'text-rose-400' : 'text-white/70'}>{eq.val}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div className={`h-full ${eq.color} rounded-full`} style={{ width: `${eq.val}%` }}></div>
-                </div>
-              </div>
+              <ProgressRow key={eq.name} label={eq.name} pct={eq.val} color={eq.color}
+                right={`${eq.val}% ${eq.val > 90 ? '⚠️' : ''}`} />
             ))}
           </div>
-        </div>
+        </Card>
+      </div>
 
-        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex-1">
-          <h3 className="text-lg font-black text-[#111827] tracking-tight mb-1">Staff Efficiency</h3>
-          <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4">Top Phlebotomists / Techs</p>
+      {/* Staff + Top Services table */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-5 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Staff Efficiency</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Top Performers</p>
           <div className="space-y-2">
             {[
-              { name: 'Dr. Sarah Jenkins', ops: 142, rank: 1 },
-              { name: 'Mike Ross (Tech)', ops: 128, rank: 2 },
-              { name: 'Anita Patel', ops: 115, rank: 3 },
-            ].map(staff => (
-              <div key={staff.rank} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[9px] font-black text-slate-500">#{staff.rank}</div>
-                <div className="flex-1">
-                  <p className="text-[10px] font-black text-[#111827]">{staff.name}</p>
-                  <p className="text-[8px] font-bold text-[#9CA3AF] uppercase">{staff.ops} Procedures/Wk</p>
+              { name: 'Dr. Sarah Jenkins', ops: 142, role: 'Senior Pathologist', rank: 1 },
+              { name: 'Mike Ross',         ops: 128, role: 'Lab Technician',     rank: 2 },
+              { name: 'Anita Patel',       ops: 115, role: 'Phlebotomist',       rank: 3 },
+              { name: 'James Liu',         ops: 98,  role: 'Radiologist',        rank: 4 },
+            ].map(s => (
+              <div key={s.rank} className="flex items-center gap-3 px-3.5 py-2.5 bg-[#0D1829]/60 rounded-xl border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0 ${s.rank === 1 ? 'bg-[#F59E0B]/20 text-[#F59E0B]' : 'bg-white/[0.05] text-white/40'}`}>#{s.rank}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-white truncate">{s.name}</p>
+                  <p className="text-[8px] font-medium text-white/35 uppercase tracking-widest">{s.role}</p>
                 </div>
+                <p className="text-[11px] font-black text-white shrink-0">{s.ops} <span className="text-white/30 text-[8px]">ops</span></p>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
+
+        <Card className="lg:col-span-7 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Service Performance Table</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Top Services by Activity</p>
+          <div className="overflow-x-auto scrollbar-none">
+            <table className="w-full text-left min-w-[420px]">
+              <thead>
+                <tr className="border-b border-white/[0.05]">
+                  {['Service','Category','Price','Margin','Status'].map(h => (
+                    <th key={h} className="px-3 py-2.5 text-[8px] font-black text-white/30 uppercase tracking-widest">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(services.slice(0, 8) as any[]).map((s: any, i: number) => (
+                  <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-3 py-2.5">
+                      <p className="text-[11px] font-semibold text-white truncate max-w-[140px]">{s.name}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="text-[9px] font-bold text-white/40">{s.category || '—'}</span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className="text-[11px] font-bold text-[#10B981]">₹{s.price || '—'}</span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-[11px] font-bold ${(s.profitMargin||0)>=55?'text-[#10B981]':(s.profitMargin||0)>=40?'text-[#F59E0B]':'text-[#F43F5E]'}`}>
+                        {s.profitMargin ?? '—'}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${s.status==='Active'?'bg-[#10B981]/10 border-[#10B981]/25 text-[#10B981]':'bg-[#F43F5E]/10 border-[#F43F5E]/25 text-[#F43F5E]'}`}>
+                        {s.status ?? 'Active'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {services.length === 0 && (
+                  <tr><td colSpan={5} className="py-10 text-center text-[10px] text-white/25">No services loaded</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     </div>
   );
 
+  // ── FINANCIAL ────────────────────────────────────────────────────────────────
   const renderFinancial = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      {/* Financial Top Row */}
-      <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#10B981] text-white rounded-[32px] p-6 shadow-sm">
-          <p className="text-[9px] font-bold text-emerald-100 uppercase tracking-widest mb-1.5">Net Profit Margin</p>
-          <h3 className="text-3xl font-black mb-1.5">32.4%</h3>
-          <p className="text-[9px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full inline-block">+2.1% from last month</p>
-        </div>
-        <div className="bg-rose-50 rounded-[32px] p-6 border border-rose-100 shadow-sm">
-          <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1.5">Outstanding Payments</p>
-          <h3 className="text-3xl font-black text-rose-600 mb-1.5">₹1.8L</h3>
-          <p className="text-[9px] font-bold text-rose-500 bg-rose-100 px-2.5 py-0.5 rounded-full inline-block">14 invoices pending &gt; 30 days</p>
-        </div>
-        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
-          <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-1.5">Supply Cost (Consumables)</p>
-          <h3 className="text-3xl font-black text-[#111827] mb-1.5">₹4.2L</h3>
-          <p className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full inline-block">Warning: Reagents +15%</p>
-        </div>
+    <div className="space-y-4">
+      {/* Top 3 cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card className="p-5 border-[#10B981]/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#10B981]/[0.06] to-transparent rounded-[22px]" />
+          <p className="text-[8px] font-black text-[#10B981] uppercase tracking-[0.2em] mb-1 relative">Net Profit Margin</p>
+          <p className="text-3xl font-black text-white mb-2 relative">{avgMargin}%</p>
+          <span className="text-[9px] font-bold text-white/40 bg-white/[0.06] px-2.5 py-1 rounded-full">+2.1% vs last period</span>
+        </Card>
+        <Card className="p-5 border-[#F43F5E]/20">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#F43F5E]/[0.06] to-transparent rounded-[22px]" />
+          <p className="text-[8px] font-black text-[#F43F5E] uppercase tracking-[0.2em] mb-1 relative">Outstanding Payments</p>
+          <p className="text-3xl font-black text-white mb-2 relative">₹1.8L</p>
+          <span className="text-[9px] font-bold text-[#F43F5E]/70 bg-[#F43F5E]/10 px-2.5 py-1 rounded-full">14 invoices &gt;30 days</span>
+        </Card>
+        <Card className="p-5">
+          <p className="text-[8px] font-black text-[#F59E0B] uppercase tracking-[0.2em] mb-1">Supply Cost (Consumables)</p>
+          <p className="text-3xl font-black text-white mb-2">₹4.2L</p>
+          <span className="text-[9px] font-bold text-[#F59E0B] bg-[#F59E0B]/10 px-2.5 py-1 rounded-full">⚠ Reagents +15%</span>
+        </Card>
       </div>
 
-      {/* Revenue Breakdown */}
-      <div className="lg:col-span-8 bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
-        <div>
-          <h3 className="text-lg font-black text-[#111827] tracking-tight mb-1">Revenue by Patient Source</h3>
-          <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-6">B2B vs B2C Channels</p>
-
-          <div className="w-full h-10 bg-slate-100 rounded-full flex overflow-hidden shadow-inner mb-6">
-            <div className="h-full bg-[#023e8a] flex items-center px-4 transition-all hover:brightness-110" style={{ width: '45%' }}>
-              <span className="text-[9px] font-black text-white uppercase tracking-wider">Walk-in (45%)</span>
-            </div>
-            <div className="h-full bg-emerald-500 flex items-center px-4 transition-all hover:brightness-110" style={{ width: '35%' }}>
-              <span className="text-[9px] font-black text-white uppercase tracking-wider">Hospitals (35%)</span>
-            </div>
-            <div className="h-full bg-purple-500 flex items-center px-4 transition-all hover:brightness-110" style={{ width: '20%' }}>
-              <span className="text-[9px] font-black text-white uppercase tracking-wider">Corp. (20%)</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { title: 'Walk-in (B2C)', rev: '₹5,60,250', col: 'text-[#023e8a]', bg: 'bg-blue-50' },
-            { title: 'Hospital Referrals', rev: '₹4,35,750', col: 'text-emerald-500', bg: 'bg-emerald-50' },
-            { title: 'Corporate Camps', rev: '₹2,49,000', col: 'text-purple-500', bg: 'bg-purple-50' },
-          ].map(item => (
-            <div key={item.title} className={`p-4 rounded-2xl border border-white/50 ${item.bg}`}>
-              <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${item.col}`}>{item.title}</p>
-              <h4 className="text-lg font-black text-slate-800">{item.rev}</h4>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="lg:col-span-4 bg-[#0A0F24] text-white rounded-[32px] p-6 shadow-sm">
-        <h3 className="text-lg font-black tracking-tight mb-5">Profit Margins</h3>
-        <div className="space-y-4">
-          {[
-            { srv: 'MRI Scans', mar: '68%', col: 'text-emerald-400' },
-            { srv: 'Routine Bloods', mar: '42%', col: 'text-emerald-400' },
-            { srv: 'Specialized Genetics', mar: '82%', col: 'text-purple-400' },
-            { srv: 'X-Ray', mar: '25%', col: 'text-amber-400' }
-          ].map(i => (
-            <div key={i.srv} className="flex justify-between items-center border-b border-white/10 pb-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">{i.srv}</span>
-              <span className={`text-sm font-black ${i.col}`}>{i.mar}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderPatient = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      {/* Geo Heatmap (Abstract representation) */}
-      <div className="lg:col-span-7 bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-black text-[#111827] tracking-tight">Geographic Heatmap</h3>
-            <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest">Patient Origin Density</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500"><ClinicalSymbol /></div>
-        </div>
-
-        {/* Abstract Grid Map */}
-        <div className="grid grid-cols-12 gap-1 p-3 bg-slate-50 border border-slate-100 rounded-3xl flex-1 min-h-[200px]">
-          {Array.from({ length: 84 }).map((_, i) => {
-            // Generate random opacity for heatmap effect
-            const opacities = ['opacity-5', 'opacity-10', 'opacity-20', 'opacity-40', 'opacity-60', 'opacity-80', 'opacity-100'];
-            const color = i % 13 === 0 || i % 7 === 0 ? 'bg-rose-500' : 'bg-[#023e8a]';
-            const opacity = opacities[Math.floor(Math.random() * opacities.length)];
-            return (
-              <div key={i} className={`w-full h-full rounded-md ${color} ${opacity} hover:opacity-100 transition-opacity cursor-pointer`}></div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="lg:col-span-5 flex flex-col gap-4">
-        {/* New vs Returning */}
-        <div className="bg-[#023e8a] text-white rounded-[32px] p-6 flex items-center justify-between shadow-sm">
-          <div>
-            <h3 className="text-lg font-black mb-0.5">Loyalty Ratio</h3>
-            <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-4">New vs Returning</p>
-            <div className="flex gap-4">
-              <div>
-                <p className="text-2xl font-black text-cyan-300">68%</p>
-                <p className="text-[8px] font-bold uppercase tracking-widest">Returning</p>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-white">32%</p>
-                <p className="text-[8px] font-bold uppercase tracking-widest text-white/50">New</p>
-              </div>
-            </div>
-          </div>
-          <div className="w-20 h-20 rounded-full border-[6px] border-cyan-400 border-l-white transform rotate-45 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-white/10 transform -rotate-45 flex items-center justify-center"><StaffSymbol color="white" /></div>
-          </div>
-        </div>
-
-        {/* Demographics */}
-        <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex-1">
-          <h3 className="text-lg font-black text-[#111827] tracking-tight mb-0.5">Age & Gender Demographics</h3>
-          <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-5">Patient Base Breakdown</p>
-
-          <div className="space-y-3">
+      {/* Revenue by Source */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-8 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Revenue by Patient Source</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">B2B vs B2C Channels</p>
+          <HBar segs={[
+            { label: 'Walk-in', pct: 45, color: '#F43F5E' },
+            { label: 'Hospitals', pct: 35, color: '#10B981' },
+            { label: 'Corporate', pct: 20, color: '#6366F1' },
+          ]} />
+          <div className="grid grid-cols-3 gap-3 mt-4">
             {[
-              { age: '0-18', m: 15, f: 12 },
-              { age: '19-35', m: 45, f: 55 },
-              { age: '36-50', m: 60, f: 40 },
-              { age: '51-65', m: 70, f: 65 },
-              { age: '65+', m: 40, f: 50 },
-            ].map(d => (
-              <div key={d.age} className="flex items-center gap-2">
-                <div className="flex-1 flex justify-end">
-                  <div className="h-3.5 bg-[#023e8a] rounded-l-sm opacity-80" style={{ width: `${d.m}%` }}></div>
-                </div>
-                <div className="w-10 text-center text-[9px] font-black text-slate-400">{d.age}</div>
-                <div className="flex-1 flex justify-start">
-                  <div className="h-3.5 bg-rose-400 rounded-r-sm opacity-80" style={{ width: `${d.f}%` }}></div>
-                </div>
+              { t:'Walk-in (B2C)', v:`₹${Math.round(estimatedRevenue*0.45).toLocaleString()}`, c:'text-[#F43F5E]', bg:'bg-[#F43F5E]/[0.07]' },
+              { t:'Hospital Refs', v:`₹${Math.round(estimatedRevenue*0.35).toLocaleString()}`, c:'text-[#10B981]', bg:'bg-[#10B981]/[0.07]' },
+              { t:'Corporate',    v:`₹${Math.round(estimatedRevenue*0.20).toLocaleString()}`, c:'text-[#6366F1]', bg:'bg-[#6366F1]/[0.07]' },
+            ].map(i => (
+              <div key={i.t} className={`${i.bg} border border-white/[0.06] rounded-xl p-4`}>
+                <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${i.c}`}>{i.t}</p>
+                <p className="text-[15px] font-black text-white">{i.v}</p>
               </div>
             ))}
           </div>
-          <div className="flex justify-center gap-5 mt-4">
-            <span className="text-[9px] font-black text-[#023e8a] uppercase tracking-widest flex items-center gap-1.5"><span className="w-2 h-2 bg-[#023e8a] opacity-80 rounded-full"></span> Male</span>
-            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1.5"><span className="w-2 h-2 bg-rose-400 opacity-80 rounded-full"></span> Female</span>
+        </Card>
+
+        <Card className="lg:col-span-4 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Profit Margins</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">By Service Category</p>
+          <div className="space-y-4">
+            {(services.slice(0,5) as any[]).length ? (services.slice(0,5) as any[]).map((s: any, i: number) => {
+              const m = s.profitMargin || Math.floor(Math.random()*40)+30;
+              return <ProgressRow key={i} label={s.name} pct={m} color={m>=55?'#10B981':m>=40?'#F59E0B':'#F43F5E'} />;
+            }) : [
+              { l:'MRI Scans', m:68 }, { l:'Blood Tests', m:42 }, { l:'Genetics', m:82 }, { l:'X-Ray', m:25 }
+            ].map(x => <ProgressRow key={x.l} label={x.l} pct={x.m} color={x.m>=55?'#10B981':x.m>=40?'#F59E0B':'#F43F5E'} />)}
           </div>
-        </div>
+        </Card>
       </div>
+
+      {/* Revenue trend */}
+      <Card className="p-5">
+        <h3 className="text-[15px] font-black text-white mb-0.5">Revenue Trend</h3>
+        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">8-Period Rolling</p>
+        <AreaChart data={revenueData.map((v, i) => v + i * 500)} color="#10B981" height={140} />
+      </Card>
     </div>
   );
 
-  const renderQuality = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      {/* Quality Top Cards */}
-      <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-[32px] p-6 border border-rose-100 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
-          <div>
-            <p className="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">Sample Rejection Rate</p>
-            <h3 className="text-2xl font-black text-[#111827]">1.2%</h3>
-            <span className="text-[9px] font-bold text-emerald-500 mt-1 block">↓ 0.4% Improvement</span>
-          </div>
-          <div className="w-12 h-12 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-center text-rose-500 font-black">!</div>
-        </div>
-        <div className="bg-white rounded-[32px] p-6 border border-amber-100 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
-          <div>
-            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-1">Rework / Retest %</p>
-            <h3 className="text-2xl font-black text-[#111827]">0.8%</h3>
-            <span className="text-[9px] font-bold text-rose-500 mt-1 block">↑ 0.2% Increase</span>
-          </div>
-          <div className="w-12 h-12 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-center text-amber-500"><PulseSymbol /></div>
-        </div>
-        <div className="bg-emerald-500 text-white rounded-[32px] p-6 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
-          <div>
-            <p className="text-[9px] font-bold text-emerald-100 uppercase tracking-widest mb-1">Audit Compliance</p>
-            <h3 className="text-2xl font-black text-white">100%</h3>
-            <span className="text-[9px] font-bold text-emerald-100 mt-1 block">NABL/ISO Standards Met</span>
-          </div>
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white"><EfficiencySymbol /></div>
-        </div>
-      </div>
-
-      <div className="lg:col-span-7 bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col">
-        <h3 className="text-lg font-black text-[#111827] tracking-tight mb-0.5">Quality Incidents Trend</h3>
-        <p className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-6">Trailing 6 Months</p>
-        <div className="w-full flex-1 min-h-[160px] flex items-end justify-between px-4 relative">
-          {/* Mock line connecting points */}
-          <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-            <polyline points="20,130 120,110 220,120 320,70 420,90 520,30" fill="none" stroke="#FF3366" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {[10, 25, 20, 50, 40, 80].map((val, i) => (
-            <div key={i} className="flex flex-col items-center z-10" style={{ transform: `translateY(-${val * 1.2}px)` }}>
-              <div className="w-3.5 h-3.5 bg-rose-500 border-2 border-white rounded-full shadow-md hover:scale-150 transition-transform cursor-pointer"></div>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-between px-4 mt-3">
-          {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(m => <span key={m} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{m}</span>)}
-        </div>
-      </div>
-
-      <div className="lg:col-span-5 bg-[#0A0F24] text-white rounded-[32px] p-6 shadow-sm">
-        <h3 className="text-lg font-black tracking-tight mb-1">Root Cause Analysis</h3>
-        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-6">For Rejected Samples</p>
-        <div className="space-y-4">
-          {[
-            { reason: 'Hemolysis', pct: 45, col: 'bg-rose-500' },
-            { reason: 'Insufficient Quantity', pct: 30, col: 'bg-amber-500' },
-            { reason: 'Clotted Sample', pct: 15, col: 'bg-purple-500' },
-            { reason: 'Wrong Container', pct: 10, col: 'bg-cyan-500' },
-          ].map(rc => (
-            <div key={rc.reason}>
-              <div className="flex justify-between text-[10px] uppercase font-bold tracking-widest mb-1.5">
-                <span className="text-white/80">{rc.reason}</span>
-                <span>{rc.pct}%</span>
-              </div>
-              <div className="w-full h-1.5 bg-white/10 rounded-full">
-                <div className={`h-full ${rc.col} rounded-full`} style={{ width: `${rc.pct}%` }}></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderBuilder = () => (
-    <div className="bg-white rounded-[32px] p-10 border border-slate-100 shadow-sm min-h-[450px] flex flex-col items-center justify-center text-center">
-      <div className="w-16 h-16 bg-[#023e8a]/5 rounded-2xl flex items-center justify-center text-[#023e8a] mb-5 border border-[#023e8a]/10">
-        <SettingsSymbol />
-      </div>
-      <h2 className="text-2xl font-black text-[#111827] tracking-tight mb-1">Custom Report Builder</h2>
-      <p className="text-[11px] font-bold text-[#9CA3AF] mb-8 max-w-sm">Drag and drop metrics below to construct automated daily, weekly, or monthly stakeholder reports.</p>
-
-      <div className="w-full max-w-2xl bg-slate-50 border-2 border-dashed border-slate-200 rounded-[28px] p-6 mb-8 min-h-[160px] flex items-center justify-center transition-colors hover:bg-slate-100 hover:border-slate-300">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Drop Metric Modules Here</p>
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
-        {['Revenue Total', 'TAT Average', 'Rejection Rate', 'Equipment Util', 'Profit Margin', 'Demographics', 'Top Services'].map(chip => (
-          <div key={chip} className="px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-600 uppercase tracking-widest cursor-grab hover:border-[#023e8a] hover:text-[#023e8a] transition-all shadow-sm">
-            :: {chip}
-          </div>
+  // ── PATIENT ──────────────────────────────────────────────────────────────────
+  const renderPatient = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { l:'Total Patients', v: totalOrders.toLocaleString(), icon:<UserIco />, c:'#6366F1' },
+          { l:'Returning (%)',  v:'68%', icon:<StarIco />, c:'#10B981' },
+          { l:'Avg Visit/Mo',   v:`${Math.round(totalOrders/12)||0}`, icon:<ClockIco />, c:'#F59E0B' },
+          { l:'NPS Score',      v:'78 / 100', icon:<CheckIco />, c:'#06B6D4' },
+        ].map((k,i) => (
+          <Card key={i} className="p-5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{background:`${k.c}18`,color:k.c}}>{k.icon}</div>
+            <p className="text-[8px] font-black text-white/35 uppercase tracking-[0.18em] mb-1">{k.l}</p>
+            <p className="text-xl font-black text-white">{k.v}</p>
+          </Card>
         ))}
       </div>
 
-      <button className="mt-8 bg-[#023e8a] text-white px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-transform shadow-md">
-        Save Template
-      </button>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Geo Heatmap */}
+        <Card className="lg:col-span-7 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Geographic Heatmap</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Patient Origin Density</p>
+          <div className="grid grid-cols-14 gap-0.5 p-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl min-h-[200px]">
+            {Array.from({ length: 112 }).map((_, i) => {
+              const intensity = Math.random();
+              const color = i % 11 === 0 || i % 7 === 0 ? '#06B6D4' : i % 5 === 0 ? '#6366F1' : '#10B981';
+              return (
+                <div key={i} className="aspect-square rounded-sm hover:opacity-100 transition-opacity cursor-pointer"
+                  style={{ background: color, opacity: intensity * 0.8 + 0.05 }} />
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-3 mt-3 justify-end">
+            {[{l:'High',c:'#10B981'},{l:'Medium',c:'#6366F1'},{l:'Low',c:'#06B6D4'}].map(x=>(
+              <span key={x.l} className="flex items-center gap-1.5 text-[8px] font-bold text-white/40">
+                <span className="w-2 h-2 rounded-sm" style={{background:x.c}} />{x.l}
+              </span>
+            ))}
+          </div>
+        </Card>
+
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          {/* Loyalty */}
+          <Card className="p-5">
+            <h3 className="text-[15px] font-black text-white mb-0.5">Loyalty Ratio</h3>
+            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">New vs Returning Patients</p>
+            <div className="flex items-center gap-4">
+              <Donut segments={[{color:'#06B6D4',pct:68},{color:'#F43F5E',pct:32}]} center="68%" />
+              <div className="space-y-3">
+                {[{l:'Returning',v:'68%',c:'#06B6D4'},{l:'New',v:'32%',c:'#F43F5E'}].map(x=>(
+                  <div key={x.l}>
+                    <p className="text-[8px] font-black text-white/35 uppercase tracking-widest">{x.l}</p>
+                    <p className="text-xl font-black" style={{color:x.c}}>{x.v}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          {/* Age/Gender */}
+          <Card className="p-5 flex-1">
+            <h3 className="text-[15px] font-black text-white mb-0.5">Age & Gender</h3>
+            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Patient Demographic Breakdown</p>
+            <div className="space-y-3">
+              {[{age:'0-18',m:15,f:12},{age:'19-35',m:45,f:55},{age:'36-50',m:60,f:40},{age:'51-65',m:70,f:65},{age:'65+',m:40,f:50}].map(d=>(
+                <div key={d.age} className="flex items-center gap-2">
+                  <div className="flex-1 flex justify-end">
+                    <div className="h-3 bg-[#F43F5E]/60 rounded-l-sm" style={{width:`${d.m}%`}} />
+                  </div>
+                  <span className="w-9 text-center text-[8px] font-black text-white/40 shrink-0">{d.age}</span>
+                  <div className="flex-1 flex justify-start">
+                    <div className="h-3 bg-[#06B6D4]/60 rounded-r-sm" style={{width:`${d.f}%`}} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center gap-6 mt-3">
+              {[{l:'Male',c:'#F43F5E'},{l:'Female',c:'#06B6D4'}].map(x=>(
+                <span key={x.l} className="flex items-center gap-1.5 text-[8px] font-black text-white/40">
+                  <span className="w-2 h-2 rounded-full" style={{background:x.c}} />{x.l}
+                </span>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 
+  // ── QUALITY ──────────────────────────────────────────────────────────────────
+  const renderQuality = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {[
+          { l:'Sample Rejection Rate', v:'1.2%', badge:'↓ 0.4% Improvement', bc:'text-[#10B981]', c:'#F43F5E', icon:'!', note:'NABL target <2%' },
+          { l:'Rework / Retest %',     v:'0.8%', badge:'↑ 0.2% Increase',    bc:'text-[#F43F5E]', c:'#F59E0B', icon:'⟳', note:'Up for review' },
+          { l:'Audit Compliance',      v:'100%', badge:'NABL/ISO Met',       bc:'text-[#10B981]', c:'#10B981', icon:'✓', note:'All standards passed' },
+        ].map((k,i)=>(
+          <Card key={i} className="p-5" style={{borderColor:`${k.c}25`}}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black" style={{background:`${k.c}15`,color:k.c}}>{k.icon}</div>
+              <span className={`text-[9px] font-black ${k.bc}`}>{k.badge}</span>
+            </div>
+            <p className="text-[8px] font-black text-white/35 uppercase tracking-[0.2em] mb-1">{k.l}</p>
+            <p className="text-2xl font-black text-white mb-1">{k.v}</p>
+            <p className="text-[8px] text-white/30">{k.note}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-7 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Quality Incidents Trend</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Trailing 6 Months</p>
+          <AreaChart data={[18, 22, 15, 10, 12, 7]} color="#F43F5E" />
+          <div className="flex justify-between mt-2 px-1">
+            {['Jan','Feb','Mar','Apr','May','Jun'].map(m => (
+              <span key={m} className="text-[7px] font-bold text-white/25 uppercase">{m}</span>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-5 p-5">
+          <h3 className="text-[15px] font-black text-white mb-0.5">Root Cause Analysis</h3>
+          <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mb-4">Rejected Sample Breakdown</p>
+          <div className="space-y-4">
+            {[
+              {r:'Hemolysis',        pct:45, c:'#F43F5E'},
+              {r:'Insufficient Qty', pct:30, c:'#F59E0B'},
+              {r:'Clotted Sample',   pct:15, c:'#8B5CF6'},
+              {r:'Wrong Container',  pct:10, c:'#06B6D4'},
+            ].map(rc=>(
+              <ProgressRow key={rc.r} label={rc.r} pct={rc.pct} color={rc.c} />
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Quality checklist */}
+      <Card className="p-5">
+        <h3 className="text-[15px] font-black text-white mb-4">Compliance Checklist</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            { l:'NABL Accreditation',     status:'pass' },
+            { l:'ISO 15189 Compliance',   status:'pass' },
+            { l:'Cold Chain Monitoring',  status:'pass' },
+            { l:'Biosafety Protocols',    status:'pass' },
+            { l:'EQA Participation',      status:'warn' },
+            { l:'IQC Daily Logs',         status:'pass' },
+            { l:'Staff Training Records', status:'warn' },
+            { l:'Calibration Records',    status:'pass' },
+            { l:'Incident Log Updated',   status:'fail' },
+          ].map((item, i) => (
+            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
+              item.status==='pass' ? 'bg-[#10B981]/[0.06] border-[#10B981]/20' :
+              item.status==='warn' ? 'bg-[#F59E0B]/[0.06] border-[#F59E0B]/20' :
+              'bg-[#F43F5E]/[0.06] border-[#F43F5E]/20'
+            }`}>
+              <span className={`text-[10px] font-black shrink-0 ${
+                item.status==='pass'?'text-[#10B981]':item.status==='warn'?'text-[#F59E0B]':'text-[#F43F5E]'}`}>
+                {item.status==='pass' ? '✓' : item.status==='warn' ? '⚠' : '✗'}
+              </span>
+              <span className="text-[11px] font-medium text-white/70">{item.l}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+
+  // ── REPORT BUILDER ────────────────────────────────────────────────────────────
+  const renderBuilder = () => (
+    <div className="space-y-4">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-black text-white">Custom Report Builder</h2>
+            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Drag metric modules to compose automated reports</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setReportModules([])}
+              className="px-4 py-2 rounded-xl text-[10px] font-bold text-white/40 bg-white/[0.04] border border-white/[0.06] hover:text-white transition-colors"
+            >Clear</button>
+            <button
+              onClick={() => { if(reportModules.length) window.print(); else alert('Add at least one module first.'); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-bold bg-gradient-to-r from-[#6366F1] to-[#10B981] text-white shadow-[0_0_18px_rgba(99,102,241,0.3)] hover:opacity-90 transition-all"
+            >
+              <DownloadIco /> Generate & Export
+            </button>
+          </div>
+        </div>
+
+        {/* Drop Zone */}
+        <div className={`border-2 border-dashed rounded-2xl p-6 mb-6 min-h-[140px] flex flex-wrap gap-2 items-start content-start transition-colors ${
+          reportModules.length ? 'border-[#6366F1]/30 bg-[#6366F1]/[0.04]' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20'
+        }`}>
+          {reportModules.length === 0 && (
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="text-[10px] font-bold text-white/25 uppercase tracking-widest">Click modules below to add them to your report →</p>
+            </div>
+          )}
+          {reportModules.map((m, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#6366F1]/15 border border-[#6366F1]/30 rounded-xl text-[10px] font-bold text-[#A5B4FC]">
+              {m}
+              <button onClick={() => setReportModules(prev => prev.filter((_,j)=>j!==i))} className="text-[#6366F1]/60 hover:text-[#F43F5E] transition-colors">×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Available Modules */}
+        <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-3">Available Modules</p>
+        <div className="flex flex-wrap gap-2">
+          {REPORT_MODULES.map(chip => {
+            const added = reportModules.includes(chip);
+            return (
+              <button
+                key={chip}
+                onClick={() => !added && setReportModules(prev => [...prev, chip])}
+                className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
+                  added
+                    ? 'bg-[#6366F1]/20 border-[#6366F1]/40 text-[#A5B4FC] cursor-default'
+                    : 'bg-[#0D1829]/60 border-white/[0.07] text-white/50 hover:border-[#6366F1]/40 hover:text-[#A5B4FC] hover:bg-[#6366F1]/10 cursor-pointer'
+                }`}
+              >
+                {added ? '✓ ' : '+ '}{chip}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* Live Preview */}
+      {reportModules.length > 0 && (
+        <Card className="p-6">
+          <h3 className="text-[15px] font-black text-white mb-4">Report Preview</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {reportModules.map((m, i) => (
+              <div key={i} className="bg-[#0D1829]/70 border border-white/[0.06] rounded-xl p-4">
+                <p className="text-[8px] font-black text-[#6366F1] uppercase tracking-widest mb-2">{m}</p>
+                <p className="text-[15px] font-black text-white">
+                  {m==='Revenue Total'?fmt(estimatedRevenue):m==='TAT Average'?'4.2h':m==='Rejection Rate'?'1.2%':m==='Equipment Util'?'77%':m==='Profit Margin'?`${avgMargin}%`:m==='Demographics'?'Patient Mix':m==='Top Services'?`${services.length} svc`:m==='Patient Count'?totalOrders:m==='Pending Orders'?pendingOrders:`${completedOrders}`}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex-1 flex flex-col bg-[#E8EEF5] min-h-full">
-      {/* 1. Sub-Dashboard Control Panel & Tabs */}
-      <div className="p-6 pb-2">
-        <div className="bg-white rounded-[32px] p-6 flex flex-col gap-5 shadow-sm border border-slate-100 transition-all">
-          <div className="flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-full page-transition">
+      {/* ── Control Panel ─────────────────────────────────────────────────────── */}
+      <div className="p-4 sm:p-6 pb-3">
+        <Card className="p-5">
+          {/* Header row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-4">
-              <div className="relative flex items-center">
-                <div className="w-12 h-12 bg-[#dcf0fa] rounded-2xl flex items-center justify-center relative z-10">
-                  <div className="w-5 h-5 text-[#023e8a]">
-                    <AnalyticsSymbol />
-                  </div>
-                </div>
+              <div className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-[#6366F1]/20 to-[#10B981]/10 border border-[#6366F1]/25 flex items-center justify-center text-[#6366F1] shrink-0">
+                <ActivityIco />
               </div>
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-black tracking-tight text-[#023e8a]">
-                    Deep Analysis
-                  </h1>
-                  <div className="bg-purple-50 border border-purple-100 px-3 py-1 rounded-full flex items-center gap-1.5 animate-pulse">
-                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
-                    <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Live Syncing</span>
+                  <h1 className="text-xl font-black text-white tracking-tight">Deep Analysis</h1>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#10B981]/[0.08] border border-[#10B981]/20 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_6px_#10B981] animate-pulse" />
+                    <span className="text-[8px] font-black text-[#10B981] uppercase tracking-widest">Live Syncing</span>
                   </div>
                 </div>
-                <p className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-[0.15em] mt-1">Real-time Performance & Clinical Insights</p>
+                <p className="text-[9px] font-medium text-white/40 uppercase tracking-[0.15em] mt-0.5">Real-time Performance & Clinical Insights</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <button className="bg-[#023e8a] text-white px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] transition-transform shadow-sm flex items-center gap-2">
-                <div className="w-3.5 h-3.5"><ExportSymbol color="white" /></div>
-                Export
+            <div className="flex items-center gap-2">
+              <button onClick={refresh} title="Refresh" className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-all">
+                <RefreshIco />
+              </button>
+              <span className="text-[8px] text-white/20 hidden sm:block">
+                Last updated {lastRefresh.toLocaleTimeString()}
+              </span>
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#6366F1] to-[#10B981] text-white rounded-xl text-[10px] font-bold shadow-[0_0_18px_rgba(99,102,241,0.25)] hover:opacity-90 transition-all relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <ExportIco /> Export
               </button>
             </div>
           </div>
 
-          <div className="h-px bg-slate-100 w-full"></div>
+          <div className="h-px bg-white/[0.05] mb-4" />
 
-          <div className="flex items-center gap-4 mt-1">
-            {/* NEW: Tabbed Navigation Dropdown */}
-            <div className="relative inline-block">
+          {/* Tab bar + Time range */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Horizontal tab pills */}
+            <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 gap-1 flex-wrap">
+              {tabs.map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${
+                    activeTab === tab
+                      ? 'bg-[#6366F1] text-white shadow-sm'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <span className="hidden sm:flex">{tabIcons[tab]}</span>
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Time Range */}
+            <div className="relative ml-auto">
               <button
-                onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
-                className="flex items-center gap-3 px-6 py-2.5 bg-[#023e8a] text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm hover:brightness-110 transition-all"
+                onClick={() => setIsTimeOpen(!isTimeOpen)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#0D1829] border border-white/[0.07] rounded-xl text-[10px] font-bold text-white/60 hover:text-white transition-colors"
               >
-                View: {activeTab}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                <ClockIco /> {timeRange}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform ${isTimeOpen?'rotate-180':''}`}><path d="M6 9l6 6 6-6"/></svg>
               </button>
-              {isTabDropdownOpen && (
-                <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-40">
-                  {(['Overview', 'Operational', 'Financial', 'Patient', 'Quality', 'Report Builder'] as Tab[]).map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => {
-                        setActiveTab(tab);
-                        setIsTabDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-slate-50 text-[#023e8a] border border-slate-100' : 'text-slate-500 hover:bg-slate-50 hover:text-[#023e8a]'}`}
-                    >
-                      {tab}
+              {isTimeOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-40 bg-[#162035] border border-white/[0.09] rounded-xl shadow-2xl p-1.5 z-50">
+                  {(['Today','Week','Month','Quarter','6 Months'] as TimeRange[]).map(r => (
+                    <button key={r} onClick={() => { setTimeRange(r); setIsTimeOpen(false); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all ${timeRange===r?'bg-[#6366F1] text-white':'text-white/50 hover:text-white hover:bg-white/[0.05]'}`}>
+                      {r}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* Time Range Dropdown */}
-            <div className="relative inline-block">
-              <button
-                onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-[9px] font-black uppercase tracking-widest text-[#023e8a] hover:bg-slate-100 transition-colors shadow-sm"
-              >
-                {timeRange === 'Custom' && customDateRange.start ? `${customDateRange.start} - ${customDateRange.end}` : timeRange}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-              {isTimeDropdownOpen && (
-                <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-50">
-                  {(['Day', 'Week', 'Month', 'Quarter', '6 Months', 'Custom'] as TimeRange[]).map(range => (
-                    <button
-                      key={range}
-                      onClick={() => {
-                        setTimeRange(range);
-                        if (range !== 'Custom') setIsTimeDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === range && range !== 'Custom' ? 'bg-[#023e8a] text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 hover:text-[#023e8a]'}`}
-                    >
-                      {range}
-                    </button>
-                  ))}
-                  {timeRange === 'Custom' && (
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-2 px-1">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
-                        <input type="date" value={customDateRange.start} onChange={e => setCustomDateRange({ ...customDateRange, start: e.target.value })} className="w-full text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#023e8a]" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
-                        <input type="date" value={customDateRange.end} onChange={e => setCustomDateRange({ ...customDateRange, end: e.target.value })} className="w-full text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#023e8a]" />
-                      </div>
-                      <button onClick={() => setIsTimeDropdownOpen(false)} className="w-full bg-[#023e8a] text-white text-[9px] font-black uppercase tracking-widest py-2 rounded-lg mt-1 hover:brightness-110 shadow-sm">Apply Range</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* 2. Dynamic Content Area based on Active Tab */}
-      <div className="flex-1 px-6 mt-4 pb-24 overflow-y-auto scrollbar-none">
-        {activeTab === 'Overview' && renderOverview()}
-        {activeTab === 'Operational' && renderOperational()}
-        {activeTab === 'Financial' && renderFinancial()}
-        {activeTab === 'Patient' && renderPatient()}
-        {activeTab === 'Quality' && renderQuality()}
+      {/* ── Dynamic Content ──────────────────────────────────────────────────── */}
+      <div className="flex-1 px-4 sm:px-6 pb-16 overflow-y-auto scrollbar-none">
+        {activeTab === 'Overview'       && renderOverview()}
+        {activeTab === 'Operational'    && renderOperational()}
+        {activeTab === 'Financial'      && renderFinancial()}
+        {activeTab === 'Patient'        && renderPatient()}
+        {activeTab === 'Quality'        && renderQuality()}
         {activeTab === 'Report Builder' && renderBuilder()}
       </div>
     </div>

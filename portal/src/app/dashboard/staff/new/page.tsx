@@ -67,19 +67,19 @@ export default function AddStaffPage() {
             <div className="grid grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Legal Full Name</label>
-                <input type="text" placeholder="e.g. Dr. Rahul Sharma" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                <input type="text" placeholder="e.g. Dr. Rahul Sharma" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Primary Email Address</label>
-                <input type="email" placeholder="e.g. rahul.s@truetest.com" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                <input type="email" placeholder="e.g. rahul.s@truetest.com" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Mobile Contact</label>
-                <input type="tel" placeholder="+91 98765 43210" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                <input type="tel" placeholder="+91 98765 43210" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Emergency Contact</label>
-                <input type="tel" placeholder="Next of kin phone number" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                <input type="tel" placeholder="Next of kin phone number" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
               </div>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function AddStaffPage() {
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Role Classification</label>
-                  <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer">
+                  <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer">
                     <option value="">Select organizational role...</option>
                     <option value="Pathologist">Pathologist</option>
                     <option value="Technician">Lab Technician</option>
@@ -105,11 +105,11 @@ export default function AddStaffPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Registration No. (MCI / DMLT)</label>
-                  <input type="text" placeholder="e.g. MCI-82910" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                  <input type="text" placeholder="e.g. MCI-82910" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Sub-Specialization</label>
-                  <input type="text" placeholder="e.g. Hematology, Microbiology" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-slate-300" />
+                  <input type="text" placeholder="e.g. Hematology, Microbiology" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:font-semibold placeholder:text-white/50" />
                 </div>
               </div>
             </div>
