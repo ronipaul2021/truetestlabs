@@ -5,20 +5,24 @@
   ### **Next-Generation B2B Platform for Diagnostic Centers**
 
   [![Tech Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20React%2019%20%7C%20Tailwind%20v4%20%7C%20Express%20%7C%20Prisma-10B981?style=for-the-badge)](https://github.com/ronipaul2021/truetestlabs)
+  [![Project Status: Active Development](https://img.shields.io/badge/Status-Under_Development-F59E0B?style=for-the-badge)](https://github.com/ronipaul2021/truetestlabs)
   [![License: ISC](https://img.shields.io/badge/License-ISC-6366F1?style=for-the-badge)](https://opensource.org/licenses/ISC)
-  [![Database: SQLite](https://img.shields.io/badge/Database-SQLite-0F1629?style=for-the-badge)](https://sqlite.org)
 
   *Empowering laboratories with real-time patient flow, automated report delivery, and streamlined operations.*
 </div>
 
 ---
 
+> [!WARNING]
+> **🚧 UNDER ACTIVE DEVELOPMENT 🚧**
+> 
+> This project is currently a **Work In Progress (WIP)**. The platform is continuously receiving major updates to enhance the B2B and B2C experience. APIs, database schemas, and UI components are subject to breaking changes without notice.
+
+---
+
 ## ⚡ Overview
 
 **TrueTestLabs** is a premium, monorepo-based clinical diagnostic and operations management platform. Engineered for scale, it provides diagnostic centers with a powerful, beautiful, and secure workstation to manage everything from service catalogs and patient orders to staff permissions and revenue analytics.
-
-> [!NOTE]
-> **Project Status:** Under active development. The platform is continuously receiving updates to enhance the B2B and B2C experience.
 
 ---
 
