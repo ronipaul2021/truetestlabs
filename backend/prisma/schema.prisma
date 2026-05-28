@@ -64,10 +64,37 @@ model DiagnosticCenter {
 }
 
 model Service {
-  id        Int              @id @default(autoincrement())
-  name      String           // e.g. USG, X-Ray
-  price     Float            @default(0)
-  centerId  Int
-  center    DiagnosticCenter @relation(fields: [centerId], references: [id])
+  id          Int              @id @default(autoincrement())
+  name        String           // e.g. USG, X-Ray
+  code        String           @default("")
+  category    String           @default("")
+  subCategory String           @default("")
+  price       Float            @default(0)
+  costPrice   Float            @default(0)
+  offerPrice  Float            @default(0)
+  discountPercent Float        @default(0)
+  tat         String           @default("")
+  specimen    String           @default("")
+  preparation String           @default("")
+  description String           @default("")
+  homeCollection Boolean       @default(false)
+  homeVisitFee Float           @default(0)
+  status      String           @default("Active")
+  demand      Int              @default(0)
+  profitMargin Float           @default(0)
+  
+  // Extended configuration fields (stored as JSON strings for complex types)
+  parameterCount Int           @default(0)
+  parameters     String        @default("[]")
+  symptoms       String        @default("[]")
+  availableDays  String        @default("[]")
+  timeSlots      String        @default("{}")
+  preTestInstructions String   @default("")
+  geofence       String        @default("")
+  homeCollectionHours String   @default("")
+  collectionTime String        @default("")
+  
+  centerId    Int
+  center      DiagnosticCenter @relation(fields: [centerId], references: [id])
   prescriptions Prescription[]
 }

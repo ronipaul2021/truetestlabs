@@ -287,26 +287,173 @@ app.get('/centers/:id/services', async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const services = await (prisma as any).service.findMany({ where: { centerId: parseInt(id as string) } });
-    res.json(services);
+    const parsedServices = services.map((s: any) => ({
+      ...s,
+      parameters: JSON.parse(s.parameters || "[]"),
+      symptoms: JSON.parse(s.symptoms || "[]"),
+      availableDays: JSON.parse(s.availableDays || "[]"),
+      timeSlots: JSON.parse(s.timeSlots || "{}"),
+    }));
+    res.json(parsedServices);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch services' });
   }
 });
 
+app.get('/services/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const service = await (prisma as any).service.findUnique({
+      where: { id: parseInt(id as string) }
+    });
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+    
+    res.json({
+      ...service,
+      parameters: JSON.parse(service.parameters || "[]"),
+      symptoms: JSON.parse(service.symptoms || "[]"),
+      availableDays: JSON.parse(service.availableDays || "[]"),
+      timeSlots: JSON.parse(service.timeSlots || "{}"),
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch service' });
+  }
+});
+
 app.post('/centers/:id/services', async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, price } = req.body;
+  const { 
+    name, code, mainCategory, subCategory, basePrice, costPrice, 
+    discountPercent, tat, specimen, preparation, description, 
+    homeCollection, homeVisitFee, offerPrice
+  } = req.body;
+
   try {
     const service = await (prisma as any).service.create({
       data: {
         name,
-        price: parseFloat(price as string),
+        code: code || '',
+        category: mainCategory || 'Lab Tests',
+        subCategory: subCategory || 'Pathology',
+        price: parseFloat(basePrice as string) || 0,
+        costPrice: parseFloat(costPrice as string) || 0,
+        offerPrice: offerPrice || 0,
+        discountPercent: parseFloat(discountPercent as string) || 0,
+        tat: tat || '',
+        specimen: specimen || '',
+        preparation: preparation || '',
+        description: description || '',
+        homeCollection: Boolean(homeCollection),
+        homeVisitFee: parseFloat(homeVisitFee as string) || 0,
+        status: req.body.status || 'Active',
+        demand: Math.floor(Math.random() * 150),
+        profitMargin: (offerPrice || parseFloat(basePrice as string)) ? Math.round((((offerPrice || parseFloat(basePrice as string)) - (parseFloat(costPrice as string)||0)) / (offerPrice || parseFloat(basePrice as string))) * 100) : 0,
         centerId: parseInt(id as string),
+        // New extended fields
+        parameterCount: parseInt(req.body.parameterCount) || 0,
+        parameters: JSON.stringify(req.body.parameters || []),
+        symptoms: JSON.stringify(req.body.symptoms || []),
+        availableDays: JSON.stringify(req.body.availableDays || []),
+        timeSlots: JSON.stringify(req.body.timeSlots || {}),
+        preTestInstructions: req.body.preTestInstructions || '',
+        geofence: req.body.geofence || '',
+        homeCollectionHours: req.body.homeCollectionHours || '',
+        collectionTime: req.body.collectionTime || ''
       },
     });
     res.json(service);
   } catch (error) {
+    console.error("SERVICE ADD ERROR:", error);
     res.status(500).json({ error: 'Failed to add service' });
+  }
+});
+
+app.patch('/services/:id/status', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    const updated = await (prisma as any).service.update({
+      where: { id: parseInt(id as string) },
+      data: { status }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+app.patch('/services/:id/price', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { price } = req.body;
+  try {
+    const updated = await (prisma as any).service.update({
+      where: { id: parseInt(id as string) },
+      data: { price: parseFloat(price) }
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update price' });
+  }
+});
+
+app.put('/services/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { 
+    name, code, mainCategory, subCategory, basePrice, costPrice, 
+    discountPercent, tat, specimen, preparation, description, 
+    homeCollection, homeVisitFee, offerPrice
+  } = req.body;
+  console.log("PUT HIT WITH BODY:", req.body);
+
+  try {
+    const updated = await (prisma as any).service.update({
+      where: { id: parseInt(id as string) },
+      data: {
+        name,
+        code: code || '',
+        category: mainCategory || 'Lab Tests',
+        subCategory: subCategory || 'Pathology',
+        price: parseFloat(basePrice as string) || 0,
+        costPrice: parseFloat(costPrice as string) || 0,
+        offerPrice: offerPrice || 0,
+        discountPercent: parseFloat(discountPercent as string) || 0,
+        tat: tat || '',
+        specimen: specimen || '',
+        preparation: preparation || '',
+        description: description || '',
+        homeCollection: Boolean(homeCollection),
+        homeVisitFee: parseFloat(homeVisitFee as string) || 0,
+        status: req.body.status || 'Active',
+        profitMargin: (offerPrice || parseFloat(basePrice as string)) ? Math.round((((offerPrice || parseFloat(basePrice as string)) - (parseFloat(costPrice as string)||0)) / (offerPrice || parseFloat(basePrice as string))) * 100) : 0,
+        // New extended fields (stored as strings)
+        parameterCount: parseInt(req.body.parameterCount) || 0,
+        parameters: JSON.stringify(req.body.parameters || []),
+        symptoms: JSON.stringify(req.body.symptoms || []),
+        availableDays: JSON.stringify(req.body.availableDays || []),
+        timeSlots: JSON.stringify(req.body.timeSlots || {}),
+        preTestInstructions: req.body.preTestInstructions || '',
+        geofence: req.body.geofence || '',
+        homeCollectionHours: req.body.homeCollectionHours || '',
+        collectionTime: req.body.collectionTime || ''
+      }
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("SERVICE UPDATE ERROR:", error);
+    res.status(500).json({ error: 'Failed to update service' });
+  }
+});
+
+app.delete('/services/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    await (prisma as any).service.delete({
+      where: { id: parseInt(id as string) }
+    });
+    res.json({ message: 'Service deleted successfully' });
+  } catch (error) {
+    console.error("SERVICE DELETE ERROR:", error);
+    res.status(500).json({ error: 'Failed to delete service' });
   }
 });
 
