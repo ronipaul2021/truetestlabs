@@ -26,20 +26,24 @@ interface DashboardContextType {
   setDarkMode: (val: boolean) => void;
   globalSearchQuery: string;
   setGlobalSearchQuery: (query: string) => void;
+  isMobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (val: boolean) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
-const API_URL = "http://localhost:3000";
-
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const API_URL = typeof window !== "undefined"
+    ? `http://${window.location.hostname}:3000`
+    : "http://localhost:3000";
   const [currentCenter, setCurrentCenter] = useState<Center | null>(null);
   const [centerLogo, setCenterLogo] = useState<string | null>(null);
   const [adminPhoto, setAdminPhoto] = useState<string | null>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [isDarkMode, setDarkMode] = useState<boolean>(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>("");
+  const [isMobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   // Load from localStorage on init
   useEffect(() => {
@@ -120,7 +124,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       isDarkMode,
       setDarkMode,
       globalSearchQuery,
-      setGlobalSearchQuery
+      setGlobalSearchQuery,
+      isMobileSidebarOpen,
+      setMobileSidebarOpen
     }}>
       {children}
     </DashboardContext.Provider>
