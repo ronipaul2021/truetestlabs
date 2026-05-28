@@ -1,320 +1,317 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = "http://localhost:3000";
+// ─── Inline SVG icons ──────────────────────────────────────────────────────────
+const Ico = ({ d, size = 18, sw = 1.6 }: { d: string; size?: number; sw?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const PulseIco   = () => <Ico d="M22 12h-4l-3 9L9 3l-3 9H2" />;
+const BuildingIco= () => <Ico d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" />;
+const UserIco    = () => <Ico d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />;
+const ChevronRIco= () => <Ico d="m9 18 6-6-6-6" />;
+const ShieldIco  = () => <Ico d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />;
+const CheckIco   = () => <Ico d="M20 6L9 17l-5-5" />;
+const ZapIco     = () => <Ico d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />;
+const BarChartIco= () => <Ico d="M18 20V10M12 20V4M6 20v-6" />;
+const FlaskIco   = () => <Ico d="M10 2v7.5M14 2v7.5M8.5 2h7M12 12c-3.5 0-6 2.5-6 6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3c0-3.5-2.5-6-6-6z" />;
+const AppleIco   = () => <Ico d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z M10 2c1 .5 2 2 2 5" />;
+const PlayStoreIco = () => <Ico d="M3 2v20l18-10L3 2z M3 2l11 14 M3 22l11-14" />;
+const FileIco    = () => <Ico d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" />;
+const MapPinIco  = () => <Ico d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10m-3 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0" />;
 
-export default function CenterPortal() {
+
+export default function LandingPage() {
   const router = useRouter();
-  const [view, setView] = useState<"login" | "register">("login");
-  const [regStep, setRegStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const savedCenter = localStorage.getItem("ttl_center");
-    if (savedCenter) {
-      router.push("/dashboard");
-    }
-  }, [router]);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  const [regData, setRegData] = useState({
-    name: "", ownerName: "", address: "", phoneNumber: "", email: "", googleMapUrl: "", password: "",
-    isoNumber: "", nablNumber: "", gstNumber: "", tradeLicense: "",
-    providesEmergency: false
-  });
-
-  const [files, setFiles] = useState<{ isoCertificate: File | null, nablCertificate: File | null }>({
-    isoCertificate: null, nablCertificate: null
-  });
-  const [previews, setPreviews] = useState<{ iso: string | null, nabl: string | null }>({
-    iso: null, nabl: null
-  });
-
-  const [loginData, setLoginData] = useState({ id: "", password: "" });
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData();
-    Object.entries(regData).forEach(([key, value]) => formData.append(key, String(value)));
-    if (files.isoCertificate) formData.append("isoCertificate", files.isoCertificate);
-    if (files.nablCertificate) formData.append("nablCertificate", files.nablCertificate);
-
-    try {
-      const response = await fetch(`${API_URL}/centers/register`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessage(`Success! ID: ${data.generatedId}`);
-        setView("login");
-        setRegStep(1);
-      } else {
-        setMessage(data.error || "Setup failed");
-      }
-    } catch (error) {
-      setMessage("Connection error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/centers/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generatedId: loginData.id, password: loginData.password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("ttl_center", JSON.stringify(data.center));
-        router.push("/dashboard");
-      } else {
-        setMessage(data.error || "Access denied");
-      }
-    } catch (error) {
-      setMessage("Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── Animated background orbs ──────────────────────────────────────────────
+  const orbs = [
+    { c: '#6366F1', x: '10%', y: '10%', s: 400, delay: '0s', dur: '10s' },
+    { c: '#10B981', x: '85%', y: '20%', s: 350, delay: '2s', dur: '12s' },
+    { c: '#6366F1', x: '50%', y: '60%', s: 500, delay: '4s', dur: '15s' },
+    { c: '#F43F5E', x: '15%', y: '80%', s: 250, delay: '1s', dur: '11s' },
+  ];
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden bg-[#E8EEF5]">
-      {/* Left Branding Pane (Neo-Clinical Aesthetic) */}
-      <div className="hidden lg:flex lg:w-[45%] relative flex-col justify-between p-12 lg:p-20 overflow-hidden bg-[#023e8a]">
-        {/* Dynamic Orbs Background */}
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-[#10B981] mix-blend-screen blur-[140px] opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-[#03045e] mix-blend-multiply blur-[100px] opacity-80"></div>
-        
-        {/* Subtle Grid Pattern */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-
-        <div className="relative z-10">
-          <div className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-2xl border border-white/20 inline-flex items-center justify-center mb-12 shadow-2xl">
-            <span className="text-2xl text-white font-black tracking-tight flex items-center gap-2">
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-               TrueTest<span className="text-emerald-400">Labs</span>
-            </span>
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tighter leading-[1.1] mb-6">
-            Intelligent <br /><span className="text-emerald-400">Diagnostics.</span>
-          </h1>
-          <p className="text-blue-100 text-lg max-w-md font-medium leading-relaxed opacity-90">
-            Join the TrueTestLabs partner network. Streamline your operations, receive live patient requests, and deliver digital reports instantly through our clinical workstation.
-          </p>
-        </div>
-
-        <div className="relative z-10 flex items-center gap-4">
-           <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur flex items-center justify-center border border-white/20">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-           </div>
-           <div>
-              <p className="text-white text-sm font-bold">Enterprise Security</p>
-              <p className="text-blue-200 text-xs font-semibold">HIPAA & NABL Compliant</p>
-           </div>
-        </div>
+    <div className="min-h-screen bg-[#0F1629] font-[Montserrat,ui-sans-serif,system-ui,sans-serif] text-white selection:bg-[#6366F1] selection:text-white overflow-x-hidden">
+      
+      {/* ── Background Effects ── */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        {orbs.map((o, i) => (
+          <div key={i} className="absolute rounded-full blur-[100px] opacity-[0.08] animate-pulse"
+            style={{ background: o.c, left: o.x, top: o.y, width: o.s, height: o.s, animationDelay: o.delay, animationDuration: o.dur }} />
+        ))}
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
       </div>
 
-      {/* Right Auth Pane */}
-      <div className="w-full lg:w-[55%] min-h-screen overflow-y-auto flex items-center justify-center p-6 sm:p-12 relative">
-        <div className="max-w-xl w-full relative z-10">
-           
-          {/* Main Card */}
-          <div className="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-white p-8 sm:p-12 transition-all">
-             
-            <div className="mb-10 text-center">
-              <h2 className="text-3xl sm:text-4xl font-black text-[#023e8a] tracking-tight mb-3">
-                {view === "login" ? "Welcome Back" : "Partner Setup"}
-              </h2>
-              <p className="text-[#9CA3AF] font-bold text-sm tracking-wide">
-                {view === "login" ? "Securely access your clinical workstation." : "Initialize your diagnostic center profile in 3 steps."}
-              </p>
+      {/* ── Navbar ── */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#0D1829]/80 backdrop-blur-xl border-b border-white/[0.05] py-4' : 'bg-transparent py-6'}`}>
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="/ttl-final.png" alt="TrueTestLabs Logo" className="w-8 h-8 object-contain" />
+              <span className="text-[20px] font-black text-white tracking-tight">
+                TrueTest<span className="text-[#10B981]">Labs</span>
+              </span>
             </div>
 
-            {/* Premium Toggle */}
-            <div className="flex p-1.5 bg-[#F3F4F6] rounded-2xl mb-10 border border-slate-100 shadow-inner">
-              <button onClick={() => { setView("login"); setRegStep(1); }} className={`flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${view === "login" ? "bg-white shadow-sm border border-slate-200 text-[#023e8a]" : "text-slate-400 hover:text-slate-600"}`}>Login to Portal</button>
-              <button onClick={() => setView("register")} className={`flex-1 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${view === "register" ? "bg-white shadow-sm border border-slate-200 text-[#023e8a]" : "text-slate-400 hover:text-slate-600"}`}>Register Center</button>
+          <div className="hidden md:flex items-center gap-8 text-[13px] font-bold">
+            <a href="#patients" className="text-white/70 hover:text-white transition-colors">For Patients</a>
+            <a href="#partners" className="text-white/70 hover:text-[#10B981] transition-colors">For Diagnostics</a>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.push('/auth')}
+              className="px-5 py-2.5 rounded-full text-[13px] font-bold text-white bg-gradient-to-r from-[#6366F1] to-[#10B981] hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.3)] transition-all">
+              Partner With Us
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Hero Section ── */}
+      <section className="relative z-10 pt-40 pb-20 px-6 min-h-[90vh] flex flex-col justify-center">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-[11px] font-bold text-white/70 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
+              India's Fastest Growing Diagnostic Network
             </div>
+            
+            <h1 className="text-[52px] sm:text-[64px] lg:text-[72px] font-black leading-[1.05] tracking-tight">
+              Your Health, <br/>
+              Your Labs, <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] via-[#818CF8] to-[#10B981]">
+                One Tap Away.
+              </span>
+            </h1>
+            
+            <p className="text-[16px] sm:text-[18px] text-white/60 leading-relaxed max-w-lg font-medium">
+              The smartest way to book diagnostic tests, access digital reports, and manage your family's health. Partnering with top verified diagnostic centers near you.
+            </p>
 
-            {view === "register" && (
-              <div className="mb-10">
-                <div className="flex justify-between mb-3">
-                  <span className="text-[10px] font-black text-[#023e8a] uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full">Step {regStep} of 3</span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-1">
-                    {regStep === 1 ? "Identity Verification" : regStep === 2 ? "Compliance Docs" : "Emergency Services"}
-                  </span>
+            {/* B2C CTAs */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <a href="#" className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white text-black hover:bg-gray-100 transition-all font-bold group">
+                <AppleIco />
+                <div className="text-left">
+                  <p className="text-[9px] uppercase tracking-widest text-black/60 font-black">Download on the</p>
+                  <p className="text-[15px] leading-tight group-hover:scale-105 transition-transform">App Store</p>
                 </div>
-                <div className="flex gap-2">
-                  {[1, 2, 3].map(s => (
-                    <div key={s} className={`h-2 rounded-full flex-1 transition-all duration-500 ${regStep >= s ? "bg-[#10B981]" : "bg-slate-100"}`}></div>
-                  ))}
+              </a>
+              <a href="#" className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-[#162035] border border-white/[0.1] hover:border-white/[0.2] hover:bg-[#1E293B] transition-all font-bold group">
+                <PlayStoreIco />
+                <div className="text-left">
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-black">GET IT ON</p>
+                  <p className="text-[15px] leading-tight text-white group-hover:scale-105 transition-transform">Google Play</p>
                 </div>
-              </div>
-            )}
+              </a>
+            </div>
+            
+            <div className="pt-6 flex items-center gap-6 text-[12px] font-bold text-white/40">
+              <span className="flex items-center gap-1.5"><ShieldIco /> Secure Data</span>
+              <span className="flex items-center gap-1.5"><CheckIco /> Verified Labs</span>
+              <span className="flex items-center gap-1.5"><ZapIco /> Instant Reports</span>
+            </div>
+          </div>
 
-            {view === "login" ? (
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Center ID</label>
-                  <input type="text" placeholder="TTL-XXXX" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] shadow-sm hover:border-blue-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300 placeholder:font-semibold" required onChange={e => setLoginData({ ...loginData, id: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Password</label>
-                  <input type="password" placeholder="••••••••" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] shadow-sm hover:border-blue-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300 placeholder:font-semibold" required onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
-                </div>
-                <button disabled={loading} className="w-full bg-[#03045e] hover:bg-[#023e8a] text-white py-5 rounded-2xl text-[11px] tracking-widest font-black uppercase transition-all shadow-lg shadow-blue-900/20 mt-4 disabled:opacity-70">
-                  {loading ? "Verifying Credentials..." : "Access Workstation"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={regStep === 3 ? handleRegister : (e) => { e.preventDefault(); setRegStep(regStep + 1); }} className="space-y-6">
-                {regStep === 1 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Diagnostic Center Name <span className="text-rose-500">*</span></label>
-                      <input type="text" placeholder="e.g. ABC Diagnostics" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.name} onChange={e => setRegData({ ...regData, name: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Owner Full Name <span className="text-rose-500">*</span></label>
-                      <input type="text" placeholder="e.g. Sarah Johnson" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.ownerName} onChange={e => setRegData({ ...regData, ownerName: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Contact Phone <span className="text-rose-500">*</span></label>
-                      <input type="text" placeholder="+1 555 000-0000" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.phoneNumber} onChange={e => setRegData({ ...regData, phoneNumber: e.target.value })} />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Full Address <span className="text-rose-500">*</span></label>
-                      <input type="text" placeholder="Complete address" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.address} onChange={e => setRegData({ ...regData, address: e.target.value })} />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Official Email Address <span className="text-rose-500">*</span></label>
-                      <input type="email" placeholder="admin@center.com" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.email} onChange={e => setRegData({ ...regData, email: e.target.value })} />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Google Maps URL <span className="text-rose-500">*</span></label>
-                      <input type="url" placeholder="https://maps.google.com/..." className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.googleMapUrl} onChange={e => setRegData({ ...regData, googleMapUrl: e.target.value })} />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Security Password <span className="text-rose-500">*</span></label>
-                      <input type="password" placeholder="Create a strong password" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.password} onChange={e => setRegData({ ...regData, password: e.target.value })} />
-                    </div>
-                  </div>
-                )}
-
-                {regStep === 2 && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">ISO Certification No. <span className="text-rose-500">*</span></label>
-                        <input type="text" placeholder="ISO-9001-2015" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.isoNumber} onChange={e => setRegData({ ...regData, isoNumber: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">NABL Certification No. <span className="text-rose-500">*</span></label>
-                        <input type="text" placeholder="NABL-MC-2023" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.nablNumber} onChange={e => setRegData({ ...regData, nablNumber: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">GST Registration <span className="text-rose-500">*</span></label>
-                        <input type="text" placeholder="22AAAAA0000A1Z5" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.gstNumber} onChange={e => setRegData({ ...regData, gstNumber: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Trade License <span className="text-rose-500">*</span></label>
-                        <input type="text" placeholder="TL-2023-XYZ" className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#023e8a] focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-300" required value={regData.tradeLicense} onChange={e => setRegData({ ...regData, tradeLicense: e.target.value })} />
-                      </div>
-                    </div>
-
-                    <div className="p-6 border-2 border-dashed border-slate-200 hover:border-blue-400 transition-colors rounded-[24px] bg-slate-50 group">
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4 flex items-center justify-between">
-                        <span>Upload ISO Certificate <span className="text-rose-500">*</span></span>
-                        <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                      </p>
-                      <input type="file" accept="image/*,.pdf" className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition-all cursor-pointer" required onChange={e => {
-                        const file = e.target.files?.[0] || null;
-                        setFiles({ ...files, isoCertificate: file });
-                        if (file && file.type.startsWith('image/')) {
-                          setPreviews({ ...previews, iso: URL.createObjectURL(file) });
-                        } else {
-                          setPreviews({ ...previews, iso: null });
-                        }
-                      }} />
-                      {previews.iso && (
-                        <div className="mt-4 rounded-xl overflow-hidden border border-slate-200 h-32 w-full bg-white shadow-sm relative group-hover:border-blue-300 transition-colors">
-                          <img src={previews.iso} alt="ISO Preview" className="w-full h-full object-contain" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-6 border-2 border-dashed border-slate-200 hover:border-blue-400 transition-colors rounded-[24px] bg-slate-50 group">
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4 flex items-center justify-between">
-                        <span>Upload NABL Certificate <span className="text-rose-500">*</span></span>
-                        <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                      </p>
-                      <input type="file" accept="image/*,.pdf" className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition-all cursor-pointer" required onChange={e => {
-                        const file = e.target.files?.[0] || null;
-                        setFiles({ ...files, nablCertificate: file });
-                        if (file && file.type.startsWith('image/')) {
-                          setPreviews({ ...previews, nabl: URL.createObjectURL(file) });
-                        } else {
-                          setPreviews({ ...previews, nabl: null });
-                        }
-                      }} />
-                      {previews.nabl && (
-                        <div className="mt-4 rounded-xl overflow-hidden border border-slate-200 h-32 w-full bg-white shadow-sm relative group-hover:border-blue-300 transition-colors">
-                          <img src={previews.nabl} alt="NABL Preview" className="w-full h-full object-contain" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {regStep === 3 && (
-                  <div className="space-y-8 text-center py-10 border border-slate-100 rounded-[32px] bg-slate-50 shadow-inner">
-                    <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-sm border border-slate-200">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF3366" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                    </div>
-                    <h3 className="text-2xl font-black text-[#023e8a] tracking-tight">Emergency Services</h3>
-                    <p className="text-slate-500 text-sm font-bold px-6">Are you providing rapid emergency services for critical reports?</p>
-
-                    <div className="flex gap-4 px-6">
-                      <button type="button" onClick={() => setRegData({ ...regData, providesEmergency: true })} className={`flex-1 py-5 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${regData.providesEmergency === true ? "bg-[#10B981] text-white shadow-lg shadow-emerald-500/20" : "bg-white text-slate-400 border border-slate-200 hover:border-emerald-300 hover:text-emerald-500"}`}>
-                        Yes, We Do
-                      </button>
-                      <button type="button" onClick={() => setRegData({ ...regData, providesEmergency: false })} className={`flex-1 py-5 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${regData.providesEmergency === false ? "bg-slate-300 text-slate-600 shadow-inner border border-slate-300" : "bg-white text-slate-400 border border-slate-200 hover:border-slate-300"}`}>
-                        No, Not Yet
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex gap-4 pt-4">
-                  {regStep > 1 && (
-                    <button type="button" onClick={() => setRegStep(regStep - 1)} className="flex-1 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 py-5 rounded-2xl uppercase text-[11px] tracking-widest font-black transition-all">
-                      Back
-                    </button>
-                  )}
-                  <button type="submit" disabled={loading} className="flex-[2] bg-[#10B981] hover:bg-emerald-600 text-white py-5 rounded-2xl uppercase text-[11px] tracking-widest font-black transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-70">
-                    {loading ? "Processing..." : regStep === 3 ? "Complete Setup" : "Continue"}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {message && (
-               <div className={`mt-8 text-center p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border animate-pulse ${message.includes('Success') ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
-                  {message}
+          {/* Abstract Hero Graphic */}
+          <div className="relative animate-in fade-in zoom-in-95 duration-1000 delay-200 hidden lg:block">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#6366F1]/20 to-[#10B981]/20 rounded-full blur-[80px]" />
+            <div className="relative h-[600px] w-full rounded-[40px] bg-[#162035]/50 border border-white/[0.08] backdrop-blur-2xl p-6 shadow-2xl flex flex-col gap-4 overflow-hidden">
+               {/* Mockup elements simulating the platform */}
+               <div className="w-full h-12 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center px-4 gap-3">
+                 <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#6366F1] to-[#10B981] p-0.5">
+                   <div className="w-full h-full bg-[#0D1829] rounded-full flex items-center justify-center"><UserIco /></div>
+                 </div>
+                 <div className="flex-1">
+                   <div className="w-24 h-2 bg-white/20 rounded-full mb-1"></div>
+                   <div className="w-16 h-1.5 bg-white/10 rounded-full"></div>
+                 </div>
+                 <div className="w-16 h-6 rounded-full bg-[#10B981]/20 text-[#10B981] flex items-center justify-center text-[9px] font-bold">Healthy</div>
                </div>
-            )}
+
+               <div className="flex gap-4">
+                 <div className="flex-1 h-32 rounded-2xl bg-gradient-to-br from-[#6366F1]/10 to-transparent border border-[#6366F1]/20 p-4">
+                   <div className="text-[#6366F1] mb-2"><FlaskIco /></div>
+                   <div className="text-[12px] font-bold text-white mb-1">Complete Blood Count</div>
+                   <div className="text-[10px] text-white/40">Apollo Diagnostics</div>
+                 </div>
+                 <div className="flex-1 h-32 rounded-2xl bg-gradient-to-br from-[#10B981]/10 to-transparent border border-[#10B981]/20 p-4">
+                    <div className="text-[#10B981] mb-2"><FileIco /></div>
+                   <div className="text-[12px] font-bold text-white mb-1">View Report</div>
+                   <div className="text-[10px] text-white/40">Generated Today</div>
+                 </div>
+               </div>
+
+               <div className="flex-1 rounded-2xl bg-[#0D1829]/80 border border-white/[0.05] p-5 mt-4 flex flex-col gap-3">
+                 <div className="flex justify-between items-center mb-2">
+                   <div className="text-[13px] font-bold text-white">Recent Vital Trends</div>
+                   <BarChartIco />
+                 </div>
+                 {[70, 45, 90, 60, 85].map((w, idx) => (
+                   <div key={idx} className="flex items-center gap-3">
+                     <div className="w-6 text-[9px] text-white/30 font-mono">0{idx+1}</div>
+                     <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                       <div className="h-full bg-gradient-to-r from-[#6366F1] to-[#10B981] rounded-full" style={{width: `${w}%`}}></div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── B2C Features Section (Patients) ── */}
+      <section id="patients" className="relative z-10 py-24 bg-[#0D1829]/40 border-y border-white/[0.02]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-[#6366F1]/10 border border-[#6366F1]/20 text-[11px] font-bold text-[#6366F1] uppercase tracking-widest mb-6">
+              <AppleIco /> Why Download The App?
+            </div>
+            <h2 className="text-[32px] sm:text-[40px] font-black text-white mb-4">Your Health Command Center</h2>
+            <p className="text-[16px] text-white/50 max-w-2xl mx-auto font-medium">
+              We make diagnostic testing as simple as ordering food. The TrueTestLabs app is the only tool you need to take control of your lifetime medical data.
+            </p>
+          </div>
+          
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: <MapPinIco />, title: "Home Collection in Seconds", desc: "Don't wait in clinic queues. Book verified phlebotomists to collect samples from your sofa." },
+              { icon: <ZapIco />, title: "Smart Digital Reports", desc: "No more paper files. View interactive, trend-analyzed reports directly on your phone." },
+              { icon: <BarChartIco />, title: "Lifetime Health Tracking", desc: "Automatically track your vital markers over years. Spot health trends before they become issues." },
+              { icon: <UserIco />, title: "Manage Family Health", desc: "Add your parents and kids to a single dashboard. Book their tests and monitor their reports seamlessly." }
+            ].map((feat, i) => (
+              <div key={i} className="bg-white/[0.02] border border-white/[0.05] rounded-[24px] p-8 hover:bg-white/[0.04] hover:border-white/[0.1] transition-all group">
+                <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center text-[#6366F1] mb-6 group-hover:scale-110 group-hover:bg-[#6366F1] group-hover:text-white transition-all duration-300">
+                  {feat.icon}
+                </div>
+                <h3 className="text-[20px] font-bold text-white mb-3">{feat.title}</h3>
+                <p className="text-[14px] text-white/50 leading-relaxed font-medium">{feat.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* ── B2B CTA Section (Diagnostic Centers) ── */}
+      <section id="partners" className="relative z-10 py-32 px-6 overflow-hidden">
+        {/* Background glow for this specific section */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#10B981]/5 to-transparent pointer-events-none" />
+        
+        <div className="max-w-5xl mx-auto bg-[#162035] border border-[#10B981]/20 rounded-[40px] p-10 sm:p-16 relative overflow-hidden shadow-2xl">
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#10B981] rounded-full blur-[100px] opacity-20 pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
+            <div className="md:w-3/5 space-y-6 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 text-[11px] font-bold text-[#10B981] uppercase tracking-widest">
+                <BuildingIco /> For Diagnostic Centers
+              </div>
+              <h2 className="text-[36px] sm:text-[44px] font-black text-white leading-tight">
+                Grow Your Diagnostic <br/> Business With Us.
+              </h2>
+              <p className="text-[16px] text-white/60 font-medium leading-relaxed">
+                Join thousands of leading laboratories scaling their patient reach, automating report delivery, and streamlining operations with the TrueTestLabs Partner Portal.
+              </p>
+              <ul className="grid sm:grid-cols-2 gap-3 text-[14px] font-bold text-white/80 pt-2">
+                <li className="flex items-center gap-2"><div className="text-[#10B981]"><CheckIco /></div> Instant Patient Flow</li>
+                <li className="flex items-center gap-2"><div className="text-[#10B981]"><CheckIco /></div> Revenue Analytics</li>
+                <li className="flex items-center gap-2"><div className="text-[#10B981]"><CheckIco /></div> Secure Cloud Storage</li>
+                <li className="flex items-center gap-2"><div className="text-[#10B981]"><CheckIco /></div> Zero Setup Fees</li>
+              </ul>
+            </div>
+            
+            <div className="md:w-2/5 flex flex-col justify-center gap-4 w-full">
+              <button 
+                onClick={() => router.push('/auth')}
+                className="w-full py-5 rounded-2xl text-[16px] font-black text-white bg-gradient-to-r from-[#10B981] to-[#059669] hover:opacity-90 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:shadow-[0_0_40px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 group">
+                Register Your Center Now <span className="group-hover:translate-x-1 transition-transform"><ChevronRIco /></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="relative z-10 bg-[#0A101C] border-t border-white/[0.05] pt-20 pb-10 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
+          <div className="col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2 mb-6">
+              <img src="/ttl-final.png" alt="TrueTestLabs Logo" className="w-8 h-8 object-contain" />
+              <span className="text-[20px] font-black tracking-tight">
+                TrueTest<span className="text-[#10B981]">Labs</span>
+              </span>
+            </div>
+            <p className="text-[13px] text-white/40 leading-relaxed font-medium mb-6">
+              Empowering patients and diagnostic centers with seamless healthcare technology.
+            </p>
+            <div className="flex items-center gap-4 text-white/30">
+              <div className="hover:text-white cursor-pointer transition-colors"><MailIco /></div>
+              <div className="hover:text-white cursor-pointer transition-colors"><PhoneIco /></div>
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="text-[13px] font-black text-white mb-6 uppercase tracking-widest">Platform</h4>
+            <ul className="space-y-4 text-[13px] font-medium text-white/50">
+              <li><a href="#patients" className="hover:text-[#6366F1] transition-colors">Patient App</a></li>
+              <li><a href="#" className="hover:text-[#6366F1] transition-colors">Book a Test</a></li>
+              <li><a href="#" className="hover:text-[#6366F1] transition-colors">Health Packages</a></li>
+              <li><a href="/auth" className="hover:text-[#10B981] transition-colors text-[#10B981]/80">Lab Login</a></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="text-[13px] font-black text-white mb-6 uppercase tracking-widest">Company</h4>
+            <ul className="space-y-4 text-[13px] font-medium text-white/50">
+              <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+              <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-[13px] font-black text-white mb-6 uppercase tracking-widest">Get The App</h4>
+            <div className="flex flex-col gap-3">
+              <a href="#" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-colors">
+                <AppleIco /> <span className="text-[12px] font-bold">App Store</span>
+              </a>
+              <a href="#" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-colors">
+                <PlayStoreIco /> <span className="text-[12px] font-bold">Google Play</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div className="max-w-7xl mx-auto pt-8 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4 text-[12px] font-medium text-white/30">
+          <p>© 2026 TrueTestLabs Inc. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
+
+// ── Icons used in footer ──
+const MailIco = () => <Ico d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22,6 12,13 2,6" />;
+const PhoneIco = () => <Ico d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.1 3.37a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />;

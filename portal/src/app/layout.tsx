@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
 import "./globals.css";
-
-const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "TrueTestLabs Portal",
@@ -16,7 +13,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.className} min-h-full flex flex-col`}>{children}</body>
+      <body className="min-h-full flex flex-col antialiased">
+        {children}
+      </body>
     </html>
   );
 }
