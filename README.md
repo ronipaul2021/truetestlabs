@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./portal/public/ttl-final.png" alt="TrueTestLabs Logo" width="120" />
+  <img src="ttl-final.png" alt="TrueTestLabs Logo" width="120" />
 
   # TrueTestLabs 
   ### **Next-Generation B2B Platform for Diagnostic Centers**
