@@ -19,7 +19,9 @@ interface User {
   createdAt: string;
 }
 
-const API_URL = "http://localhost:3000";
+const API_URL = typeof window !== "undefined"
+  ? `http://${window.location.hostname}:3000`
+  : "http://localhost:3000";
 
 export default function AdminDashboard() {
   const [centers, setCenters] = useState<Center[]>([]);
