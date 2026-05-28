@@ -1,132 +1,96 @@
-# TrueTestLabs 🔬
+<div align="center">
+  <img src="./portal/public/ttl-final.png" alt="TrueTestLabs Logo" width="120" />
 
-[![Tech Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20React%20%7C%20Expo%20%7C%20Express%20%7C%20Prisma-blue)](https://github.com/ronipaul2021/truetestlabs)
-[![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
-[![Database: SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey.svg)](https://sqlite.org)
-[![Project Status: Active](https://img.shields.io/badge/Project%20Status-Active%20Development-orange)](https://github.com/ronipaul2021/truetestlabs)
+  # TrueTestLabs 
+  ### **Next-Generation B2B Platform for Diagnostic Centers**
+
+  [![Tech Stack](https://img.shields.io/badge/Stack-Next.js%20%7C%20React%2019%20%7C%20Tailwind%20v4%20%7C%20Express%20%7C%20Prisma-10B981?style=for-the-badge)](https://github.com/ronipaul2021/truetestlabs)
+  [![License: ISC](https://img.shields.io/badge/License-ISC-6366F1?style=for-the-badge)](https://opensource.org/licenses/ISC)
+  [![Database: SQLite](https://img.shields.io/badge/Database-SQLite-0F1629?style=for-the-badge)](https://sqlite.org)
+
+  *Empowering laboratories with real-time patient flow, automated report delivery, and streamlined operations.*
+</div>
+
+---
+
+## ⚡ Overview
+
+**TrueTestLabs** is a premium, monorepo-based clinical diagnostic and operations management platform. Engineered for scale, it provides diagnostic centers with a powerful, beautiful, and secure workstation to manage everything from service catalogs and patient orders to staff permissions and revenue analytics.
 
 > [!NOTE]
-> **Project Status:** Under active development (Timeline: 1/5/2026 to Present). This project is work-in-progress and is not yet complete.
+> **Project Status:** Under active development. The platform is continuously receiving updates to enhance the B2B and B2C experience.
 
-TrueTestLabs is a comprehensive clinical diagnostic and operations management platform. Built as a monorepo, it seamlessly integrates administrative control, clinical portals, client ordering systems, and mobile companion applications to manage laboratory operations.
+---
 
+## ✨ Key Features
+
+- 🏥 **Multi-Step Partner Onboarding:** Secure registration flow for diagnostic centers capturing ISO/NABL compliance and emergency capabilities.
+- 📊 **Real-Time Analytics Dashboard:** Live revenue tracking, patient flow metrics, and AI-powered trend analysis.
+- 🧬 **Deep Service Deep Analysis:** Exhaustive catalog management including TAT (Turnaround Time), parameters, clinical symptoms, and geofenced home collection.
+- 📦 **Kanban Logistics Hub:** Drag-and-drop order tracking, automated barcode generation, and specimen logistics.
+- 👥 **Team & Role Management:** Granular RBAC (Role-Based Access Control) for laboratory staff (Phlebotomists, Pathologists, Admins).
+- ⚙️ **Control Center:** Global policy configurations, SLA monitoring, and security audit logs.
+- 🎨 **Premium Aesthetic UI:** Glassmorphism, animated elements, and a meticulously crafted "Midnight Navy" theme for a world-class SaaS experience.
 
 ---
 
 ## 🏗️ Repository Architecture
 
-This codebase is structured as a monorepo containing the following components:
+This codebase is structured as a monorepo containing interconnected services:
 
-| Directory | Component | Technology Stack | Default Port / Environment |
-| :--- | :--- | :--- | :--- |
-| [**`/backend`**](./backend) | Express API & Prisma Service Layer | Node.js, Express, Prisma, SQLite, TypeScript | Port `3000` |
-| [**`/portal`**](./portal) | Clinical Order Portal (Clients & Doctors) | Next.js (v16), React 19, Tailwind CSS (v4) | Port `3002` |
-| [**`/admin`**](./admin) | Platform Management Dashboard | Next.js (v16), React 19, Tailwind CSS (v4) | Port `3000` (auto-falls back to `3001` if busy) |
-| [**`/mobile`**](./mobile) | Patient/Physician Companion Mobile App | Expo, React Native, TypeScript | Expo Development Server |
+| Component | Directory | Technology Stack | Default Port | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Backend API** | [`/backend`](./backend) | Node.js, Express, Prisma, SQLite | `3000` | Core REST API, business logic, and database layer. |
+| **Partner Portal** | [`/portal`](./portal) | Next.js (v16), React 19, Tailwind CSS | `3001` | The main workstation and dashboard for Diagnostic Centers. |
+| **Admin Panel** | [`/admin`](./admin) | Next.js, React, Tailwind CSS | `3002` | Super-admin dashboard for TrueTestLabs platform management. |
+| **Mobile App** | [`/mobile`](./mobile) | Expo, React Native, TypeScript | `8081` | Companion application for patients and phlebotomists. |
 
 ---
 
 ## 🚀 Getting Started
 
-Follow the steps below to set up and run the TrueTestLabs platform locally.
+Follow these instructions to set up the TrueTestLabs platform on your local development environment.
 
-### 📋 Prerequisites
+### Prerequisites
 
-Ensure you have the following installed on your system:
-- **Node.js** (v18.x or later recommended)
-- **npm** (v9.x or later) or **yarn** / **pnpm**
+- **Node.js** (v18.x or later)
+- **npm** (v9.x or later)
 
----
+### 1. Backend Service Setup
 
-### 1. Backend Setup
-
-The backend manages the central SQLite database and provides API routes for the frontend applications.
+The backend handles all data persistence and API endpoints.
 
 ```bash
-# Navigate to the backend directory
 cd backend
-
-# Install dependencies
 npm install
 
-# Configure local database (Prisma migrations & seed data)
+# Initialize SQLite database and run Prisma migrations
 npx prisma migrate dev --name init
-npm run seed  # Optional: seed initial dummy data
 
-# Start the backend server in development mode
+# Start the Express server
 npm run dev
 ```
+*API available at `http://localhost:3000`*
 
-The server will start running at `http://localhost:3000`.
+### 2. Partner Portal (Diagnostic Dashboard)
 
----
-
-### 2. Client Portal Setup
-
-The portal handles diagnostics ordering, test lists, and status updates for clinicians and patients.
+The core web application for diagnostic partners.
 
 ```bash
-# Navigate to the portal directory
 cd ../portal
-
-# Install dependencies
 npm install
 
-# Start the portal in development mode
+# Start the Next.js development server
 npm run dev
 ```
+*Portal available at `http://localhost:3001`*
 
-Open [http://localhost:3002](http://localhost:3002) in your browser to view the client portal.
+### 3. Environment Configuration
 
----
-
-### 3. Admin Dashboard Setup
-
-The admin dashboard handles lab operational flows, staff management, and system-wide settings.
-
-```bash
-# Navigate to the admin directory
-cd ../admin
-
-# Install dependencies
-npm install
-
-# Start the admin portal in development mode
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) (or the port indicated in the terminal output) in your browser.
-
----
-
-### 4. Mobile Application Setup
-
-The mobile application is a React Native app built using Expo.
-
-```bash
-# Navigate to the mobile directory
-cd ../mobile
-
-# Install dependencies
-npm install
-
-# Start the Expo development server
-npx expo start
-```
-
-Use the **Expo Go** application on your physical device (iOS or Android) or run it inside an emulator/simulator as prompted by the CLI.
-
----
-
-## 🔒 Environment Configurations
-
-For security, local configurations are stored in environment files. Do not commit `.env` files to the repository.
-
-### Backend Environment Variables (`/backend/.env`)
-Create a `.env` file in the `/backend` folder with the following contents:
+For local development, create a `.env` file in the `/backend` directory:
 ```env
 DATABASE_URL="file:./dev.db"
-JWT_SECRET="your_jwt_secret_key"
+JWT_SECRET="your_development_jwt_secret_key"
 PORT=3000
 ```
 
@@ -134,7 +98,16 @@ PORT=3000
 
 ## 🤝 Contributing
 
+We welcome contributions to make TrueTestLabs even better.
+
 1. Create a descriptive feature branch: `git checkout -b feature/your-feature-name`
-2. Commit your changes: `git commit -m 'feat: add some amazing feature'`
+2. Commit your changes using Conventional Commits: `git commit -m 'feat(portal): add intelligent barcode scanner'`
 3. Push to the branch: `git push origin feature/your-feature-name`
-4. Open a Pull Request.
+4. Open a Pull Request for review.
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by TrueTestLabs</p>
+  <p><b>Secure • Fast • Compliant</b></p>
+</div>
